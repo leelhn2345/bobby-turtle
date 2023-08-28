@@ -7,7 +7,7 @@ a virtual polar bear pet on telegram.
 
 ### requisite
 
-Webhooks are used in these bot. So we need a reverse proxy.
+Webhooks are used in this bot. So we need a reverse proxy.
 
 Use either [`ngrok`](https://ngrok.com/) or
 [`localtunnel`](https://github.com/localtunnel/localtunnel) to set the
