@@ -1,5 +1,4 @@
 use config::ConfigError;
-use dotenv::dotenv;
 
 mod application;
 mod database;
@@ -17,8 +16,6 @@ pub struct Settings {
 }
 
 pub fn get_settings() -> Result<Settings, ConfigError> {
-    dotenv().ok();
-
     let base_path = std::env::current_dir().expect("failed to determine current directory");
     let config_directory = base_path.join("config");
 

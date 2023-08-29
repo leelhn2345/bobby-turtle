@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 axum = "0.6.20"
 config = "0.13.3"
-dotenv = "0.15.0"
+dotenvy = "0.15.7"
 serde = "1.0.188"
 serde-aux = "4.2.0"
 teloxide = { version = "0.12.2", features = ["macros", "webhooks-axum", "webhooks"] }
