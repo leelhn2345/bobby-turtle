@@ -1,7 +1,12 @@
-use polarrbear_bot::bot::start_bot;
-use polarrbear_bot::settings::get_settings;
-use polarrbear_bot::webhook::setup_axum_webhook;
+mod bot;
+mod routes;
+mod settings;
+mod webhook;
+
+use bot::start_bot;
+use settings::get_settings;
 use teloxide::Bot;
+use webhook::setup_axum_webhook;
 
 #[tokio::main]
 async fn main() {
