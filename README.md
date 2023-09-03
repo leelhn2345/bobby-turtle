@@ -1,7 +1,13 @@
-# Polarbearr Bot
+# Bobby Turtle Bot
 
-a virtual polar bear pet on telegram.
-[`@polarbearr_bot`](https://t.me/polarbearr_bot)
+a virtual turtle pet on telegram.
+[`[@bobbytheturtlebot](https://t.me/bobbytheturtlebot)
+
+This bot is **still in active development**.
+
+## Usage
+
+Use `/help` in chat.
 
 ## Local development
 
