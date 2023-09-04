@@ -1,7 +1,7 @@
 # Bobby Turtle Bot
 
 a virtual turtle pet on telegram.
-[`[@bobbytheturtlebot](https://t.me/bobbytheturtlebot)
+[`[@bobbyturtlebot](https://t.me/bobbyturtlebot)
 
 This bot is **still in active development**.
 
