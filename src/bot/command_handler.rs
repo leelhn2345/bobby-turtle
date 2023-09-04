@@ -38,7 +38,7 @@ async fn parse_command(bot: Bot, msg: Message, cmd: Command) -> HandlerResult {
     Ok(())
 }
 
-pub fn bot_command_handler() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
+pub fn bot_command_handler() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync>> {
     dptree::entry()
         .filter_command::<Command>()
         .endpoint(parse_command)

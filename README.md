@@ -1,7 +1,7 @@
 # Bobby Turtle Bot
 
 a virtual turtle pet on telegram.
-[`[@bobbytheturtlebot](https://t.me/bobbytheturtlebot)
+[`[@bobbyturtlebot](https://t.me/bobbyturtlebot)
 
 This bot is **still in active development**.
 
@@ -29,5 +29,5 @@ ngrok http 3000
 ```sh
 # if use localtunnel
 # this is what i use
-lt --port 3000 --subdomain polarbearr
+lt --port 3000 --subdomain bobby
 ```

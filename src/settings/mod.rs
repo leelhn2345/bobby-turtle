@@ -5,11 +5,10 @@ mod database;
 mod environment;
 
 use application::*;
-// use database::*;
 use environment::*;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Settings {
     pub application: ApplicationSettings,
     // pub database: DatabaseSettings,
