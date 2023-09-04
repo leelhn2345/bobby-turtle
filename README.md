@@ -29,5 +29,5 @@ ngrok http 3000
 ```sh
 # if use localtunnel
 # this is what i use
-lt --port 3000 --subdomain polarbearr
+lt --port 3000 --subdomain bobby
 ```

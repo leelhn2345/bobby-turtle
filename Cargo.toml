@@ -1,5 +1,5 @@
 [package]
-name = "polarrbear-bot"
+name = "bobby-turtle"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,7 +13,11 @@ dotenvy = "0.15.7"
 reqwest = { version = "0.11.20", features = ["blocking"] }
 serde = "1.0.188"
 serde-aux = "4.2.0"
-teloxide = { version = "0.12.2", features = ["macros", "webhooks-axum", "webhooks"] }
+teloxide = { version = "0.12.2", features = [
+  "macros",
+  "webhooks-axum",
+  "webhooks",
+] }
 thiserror = "1.0.47"
 tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros"] }
 utoipa = { version = "3.5.0", features = ["axum_extras"] }

@@ -6,13 +6,13 @@ use std::convert::Infallible;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 
 use self::command_handler::bot_command_handler;
+use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
 use teloxide::types::Update;
 use teloxide::{dispatching::UpdateHandler, update_listeners::UpdateListener, Bot};
 
-fn bot_handler() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
+fn bot_handler() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync>> {
     let command_handler = bot_command_handler();
-    use teloxide::dptree;
 
     dptree::entry().branch(Update::filter_message().branch(command_handler))
 }
@@ -29,6 +29,7 @@ pub async fn start_bot(bot: Bot, listener: impl UpdateListener<Err = Infallible>
 
     Dispatcher::builder(bot, handler)
         // .dependencies(dptree::deps![InMemStorage::<State>::new()])
+        // .dependencies(dptree::deps![settings])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())
