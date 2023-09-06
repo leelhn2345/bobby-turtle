@@ -136,3 +136,28 @@ pub async fn sticker_coming_soon(bot: Bot, msg: Message) -> ResponseResult<()> {
     .await?;
     Ok(())
 }
+
+pub async fn sticker_party_animals(bot: Bot, msg: Message) -> ResponseResult<()> {
+    let stickers = [
+        // turtle
+        "CAACAgIAAxkBAAEluSdk-JbvYGIPlWmm8TqaQWT2zH0r7wAC9gsAArFaAUrxSFX7RKSbuzAE",
+        // cat
+        "CAACAgIAAxkBAAEluS1k-JcnvhTpKxi0LrwwEO5N-fL9fQACCxMAAujW4hIMnebll-_T-TAE",
+        // dog
+        "CAACAgIAAxkBAAEluTFk-JdI3NM2x5BXWl5preZcOdLQBQACWQADrWW8FPS7RxeJ4S0JMAQ",
+        // frog
+        "CAACAgIAAxkBAAEluTNk-JdxDlrqhNEJ42xFklGpqxHC2QACxxkAAuCZ8EgQ05nTiGAPwTAE",
+        // cow
+        "CAACAgQAAxkBAAEluTVk-JeP1Wvl8pIF3-hfieeB5z1lLAACOhgAAqbxcR6cYA5lHoA_dDAE",
+        // ghost
+        "CAACAgIAAxkBAAEluTdk-Jeq3XW1NasUbNvUyUUkQOGmnwAC3QADMNSdEY1VJRWnGm6vMAQ",
+        // chick
+        "CAACAgIAAxkBAAEluTlk-JfHRw4ToiYB4VLz7Wf2pIFXfQACKBYAArAOoUuS9aoVZQ9R8TAE",
+    ];
+
+    for sticker in stickers {
+        bot.send_sticker(msg.chat.id, InputFile::file_id(sticker))
+            .await?;
+    }
+    Ok(())
+}
