@@ -1,20 +1,34 @@
-mod command_handler;
-mod message_handler;
+mod command;
+mod message;
 mod stickers;
 
 use std::convert::Infallible;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 
-use self::command_handler::bot_command_handler;
+use crate::types::DpHandler;
+
+use self::command::bot_command_handler;
+
+use self::message::bot_message_handler;
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
 use teloxide::types::Update;
-use teloxide::{dispatching::UpdateHandler, update_listeners::UpdateListener, Bot};
+use teloxide::{update_listeners::UpdateListener, Bot};
 
-fn bot_handler() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync>> {
+fn bot_handler() -> DpHandler {
     let command_handler = bot_command_handler();
+    let message_handler = bot_message_handler();
 
-    dptree::entry().branch(Update::filter_message().branch(command_handler))
+    dptree::entry()
+        // .inspect(|u: Update| {
+        //     println!("{u:#?}"); // Print the update to the console with inspect
+        //                         // method and a closure for debug purposes
+        // })
+        .branch(
+            Update::filter_message()
+                .branch(command_handler)
+                .branch(message_handler),
+        )
 }
 pub async fn start_bot(bot: Bot, listener: impl UpdateListener<Err = Infallible>) {
     // let handler = Update::filter_message()
