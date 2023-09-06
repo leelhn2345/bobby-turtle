@@ -1,7 +1,7 @@
 # Bobby Turtle Bot
 
 a virtual turtle pet on telegram.
-[`[@bobbyturtlebot](https://t.me/bobbyturtlebot)
+[@bobbyturtlebot](https://t.me/bobbyturtlebot)
 
 This bot is **still in active development**.
 
@@ -30,4 +30,7 @@ ngrok http 3000
 # if use localtunnel
 # this is what i use
 lt --port 3000 --subdomain bobby
+# beware
+# max listener error occurs quite fun
+# so may have to restart command
 ```
