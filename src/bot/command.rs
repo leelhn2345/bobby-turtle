@@ -1,17 +1,16 @@
+use crate::settings::Settings;
+use crate::types::{DpHandler, DpHandlerResult};
+use crate::utils::stickers::{send_many_stickers, send_sticker};
 use teloxide::dptree;
 use teloxide::requests::Requester;
 use teloxide::{dispatching::HandlerExt, types::Message, utils::command::BotCommands, Bot};
 
-use crate::types::{DpHandler, DpHandlerResult};
-
-use super::stickers::{sticker_coming_soon, sticker_hello, sticker_kiss, sticker_party_animals};
-
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "hello master 🐢 😊")]
-enum Command {
+enum BotCommand {
     #[command(description = "list down all commands")]
     Help,
-    #[command(description = "a hug full of warmth")]
+    #[command(description = "a lovely hug! 🤗❤️")]
     Hug,
     // #[command(description = "greetings")]
     // Greet,
@@ -29,24 +28,37 @@ enum AdminCommand {
     Start,
 }
 
-async fn parse_command(bot: Bot, msg: Message, cmd: Command) -> DpHandlerResult {
+async fn parse_command(
+    bot: Bot,
+    msg: Message,
+    settings: Settings,
+    cmd: BotCommand,
+) -> DpHandlerResult {
     match cmd {
-        Command::Help => {
-            bot.send_message(msg.chat.id, Command::descriptions().to_string())
+        BotCommand::Help => {
+            bot.send_message(msg.chat.id, BotCommand::descriptions().to_string())
                 .await?;
         }
-        Command::Kiss => sticker_kiss(bot, msg).await?,
-        Command::Party => sticker_party_animals(bot, msg).await?,
+        BotCommand::Hug => send_sticker(&bot, &msg, settings.stickers.hug).await?,
+        BotCommand::Kiss => send_sticker(&bot, &msg, settings.stickers.kiss).await?,
+        BotCommand::Party => {
+            send_many_stickers(&bot, &msg, settings.stickers.party_animals).await?
+        }
         _ => {
             bot.send_message(msg.chat.id, "~ feature coming soon ~")
                 .await?;
-            sticker_coming_soon(bot, msg).await?;
+            send_sticker(&bot, &msg, settings.stickers.coming_soon).await?;
         }
     }
     Ok(())
 }
 
-async fn admin_cmd_handler(bot: Bot, msg: Message, cmd: AdminCommand) -> DpHandlerResult {
+async fn admin_cmd_handler(
+    bot: Bot,
+    msg: Message,
+    settings: Settings,
+    cmd: AdminCommand,
+) -> DpHandlerResult {
     match cmd {
         AdminCommand::Start => {
             let text = match msg.chat.username() {
@@ -54,7 +66,7 @@ async fn admin_cmd_handler(bot: Bot, msg: Message, cmd: AdminCommand) -> DpHandl
                 None => String::from("hello friend!"),
             };
             bot.send_message(msg.chat.id, text).await?;
-            sticker_hello(bot, msg).await?;
+            send_sticker(&bot, &msg, settings.stickers.hello).await?;
         }
     }
     Ok(())
@@ -64,7 +76,7 @@ pub fn bot_command_handler() -> DpHandler {
     dptree::entry()
         .branch(
             dptree::entry()
-                .filter_command::<Command>()
+                .filter_command::<BotCommand>()
                 .endpoint(parse_command),
         )
         .branch(

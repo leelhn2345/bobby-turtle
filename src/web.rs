@@ -6,7 +6,7 @@ use teloxide::{
 use crate::{routes::setup_bot_router, settings::Settings};
 
 pub async fn setup_axum_webhook(
-    settings: Settings,
+    settings: &Settings,
     bot: Bot,
 ) -> impl UpdateListener<Err = std::convert::Infallible> {
     // let options = webhooks::Options::new(address, url);

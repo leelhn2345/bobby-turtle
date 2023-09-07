@@ -3,15 +3,16 @@ use config::ConfigError;
 mod application;
 mod database;
 mod environment;
+mod stickers;
 
 use application::*;
 use environment::*;
 use serde::Deserialize;
-
-#[derive(Deserialize, Debug)]
+use stickers::*;
+#[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub application: ApplicationSettings,
-    // pub database: DatabaseSettings,
+    pub stickers: Stickers, // pub users: Users, // pub database: DatabaseSettings,
 }
 
 pub fn get_settings() -> Result<Settings, ConfigError> {
@@ -30,6 +31,7 @@ pub fn get_settings() -> Result<Settings, ConfigError> {
         .add_source(config::File::from(
             config_directory.join(environment_filename),
         ))
+        .add_source(config::File::from(config_directory.join("stickers.yaml")))
         .add_source(
             config::Environment::with_prefix("APP")
                 .prefix_separator("_")
