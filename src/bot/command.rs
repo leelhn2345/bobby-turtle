@@ -3,9 +3,9 @@ use teloxide::requests::Requester;
 use teloxide::{dispatching::HandlerExt, types::Message, utils::command::BotCommands, Bot};
 
 use crate::types::{DpHandler, DpHandlerResult};
-use crate::utils::stickers::sticker_kiss;
-
-use super::stickers::{sticker_coming_soon, sticker_hello, sticker_hug, sticker_party_animals};
+use crate::utils::stickers::{
+    sticker_coming_soon, sticker_hello, sticker_hug, sticker_kiss, sticker_party_animals,
+};
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "hello master 🐢 😊")]
@@ -36,7 +36,7 @@ async fn parse_command(bot: Bot, msg: Message, cmd: Command) -> DpHandlerResult 
             bot.send_message(msg.chat.id, Command::descriptions().to_string())
                 .await?;
         }
-        Command::Hug => sticker_hug(bot, msg).await?,
+        Command::Hug => sticker_hug(&bot, &msg).await?,
         Command::Kiss => sticker_kiss(&bot, &msg).await?,
         Command::Party => sticker_party_animals(bot, msg).await?,
         _ => {

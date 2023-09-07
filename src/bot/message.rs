@@ -2,7 +2,7 @@ use teloxide::{dispatching::MessageFilterExt, dptree, requests::Requester, types
 
 use crate::types::{DpHandler, DpHandlerResult};
 
-use super::stickers::{sticker_hello, sticker_sad};
+use crate::utils::stickers::{sticker_hello, sticker_sad};
 
 pub fn bot_message_handler() -> DpHandler {
     // let message_handler = Update::filter_message;
