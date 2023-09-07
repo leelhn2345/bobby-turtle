@@ -8,7 +8,7 @@ pub enum Environment {
 impl TryFrom<String> for Environment {
     type Error = String;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.to_lowercase().as_str() {
+        match value.to_lowercase().as_str().trim() {
             "local" => {
                 dotenv().expect(".env file not found");
                 Ok(Self::Local)

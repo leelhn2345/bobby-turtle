@@ -2,8 +2,8 @@ mod bot;
 mod handlers;
 mod routes;
 mod settings;
+mod stickers;
 mod types;
-mod utils;
 mod web;
 
 use bot::start_bot;

@@ -12,7 +12,9 @@ use stickers::*;
 #[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub application: ApplicationSettings,
-    pub stickers: Stickers, // pub users: Users, // pub database: DatabaseSettings,
+    pub stickers: Stickers,
+    // pub users: Users,
+    // pub database: DatabaseSettings,
 }
 
 pub fn get_settings() -> Result<Settings, ConfigError> {

@@ -1,6 +1,6 @@
 use teloxide::{requests::Requester, types::Message, Bot};
 
-use crate::{settings::Settings, types::MyResult, utils::stickers::send_sticker};
+use crate::{settings::Settings, stickers::send_sticker, types::MyResult};
 
 pub async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
     let Some(new_members) = msg.new_chat_members() else {

@@ -1,7 +1,7 @@
 use crate::{
     settings::Settings,
+    stickers::{send_many_stickers, send_sticker},
     types::MyResult,
-    utils::stickers::{send_many_stickers, send_sticker},
 };
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
