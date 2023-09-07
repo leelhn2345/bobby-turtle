@@ -1,10 +1,10 @@
 mod command;
 mod message;
-mod stickers;
 
 use std::convert::Infallible;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 
+use crate::settings::Settings;
 use crate::types::DpHandler;
 
 use self::command::bot_command_handler;
@@ -30,7 +30,11 @@ fn bot_handler() -> DpHandler {
                 .branch(message_handler),
         )
 }
-pub async fn start_bot(bot: Bot, listener: impl UpdateListener<Err = Infallible>) {
+pub async fn start_bot(
+    bot: Bot,
+    listener: impl UpdateListener<Err = Infallible>,
+    settings: Settings,
+) {
     // let handler = Update::filter_message()
     //     .enter_dialogue::<Message, InMemStorage<State>, State>()
     //     .branch(dptree::case![State::Start].endpoint(start))
