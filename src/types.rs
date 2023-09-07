@@ -1,5 +1,7 @@
-use teloxide::dispatching::UpdateHandler;
+#[derive(thiserror::Error, Debug)]
+pub enum MyError {
+    #[error(transparent)]
+    RequestError(#[from] teloxide::RequestError),
+}
 
-pub type DpHandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
-
-pub type DpHandler = UpdateHandler<Box<dyn std::error::Error + Send + Sync>>;
+pub type MyResult<T> = Result<T, MyError>;
