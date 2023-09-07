@@ -3,6 +3,7 @@ use config::ConfigError;
 mod application;
 mod database;
 mod environment;
+mod users;
 
 use application::*;
 use environment::*;
@@ -11,7 +12,7 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug)]
 pub struct Settings {
     pub application: ApplicationSettings,
-    // pub database: DatabaseSettings,
+    // pub users: Users, // pub database: DatabaseSettings,
 }
 
 pub fn get_settings() -> Result<Settings, ConfigError> {

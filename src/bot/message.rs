@@ -16,11 +16,14 @@ async fn handle_new_member(bot: Bot, msg: Message) -> DpHandlerResult {
     let Some(new_members) = msg.new_chat_members() else {
         return Ok(());
     };
+    let bot_details = bot.get_me().await?;
+    let bot_username = bot_details.username.as_ref().unwrap();
+    let bot_name = &bot_details.first_name;
     for member in new_members {
         let text = match &member.username {
             Some(x) => {
-                if &bot.get_me().await?.user.username.unwrap() == x {
-                    "Hello everyone!! I'm Bobby! 🐢".to_string()
+                if bot_username == x {
+                    format!("Hello everyone!! I'm {}! 🐢.", bot_name)
                 } else {
                     format!("hello @{}", x)
                 }

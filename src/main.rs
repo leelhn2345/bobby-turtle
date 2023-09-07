@@ -1,7 +1,9 @@
 mod bot;
+mod handlers;
 mod routes;
 mod settings;
 mod types;
+mod utils;
 mod webhook;
 
 use bot::start_bot;

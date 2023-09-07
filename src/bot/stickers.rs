@@ -9,7 +9,7 @@ pub async fn sticker_hug(bot: Bot, msg: Message) -> ResponseResult<()> {
     bot.send_sticker(
         msg.chat.id,
         InputFile::file_id(
-            "CAACAgIAAxkBAAEloC9k9K3Ed8ThojkktFiKU3DHd2DDGgAC9gsAArFaAUrxSFX7RKSbuzAE",
+            "CAACAgIAAxkBAAEluctk-K1ifcDystDLakriS_aU1wSDIgACAwIAAhZCawpxS_u7v8y6NjAE",
         ),
     )
     .await?;
