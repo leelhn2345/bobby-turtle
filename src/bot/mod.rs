@@ -47,7 +47,7 @@ pub async fn start_bot(
 
     Dispatcher::builder(bot, handler)
         // .dependencies(dptree::deps![InMemStorage::<State>::new()])
-        // .dependencies(dptree::deps![settings])
+        .dependencies(dptree::deps![settings])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())

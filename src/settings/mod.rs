@@ -9,7 +9,7 @@ use application::*;
 use environment::*;
 use serde::Deserialize;
 use stickers::*;
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub application: ApplicationSettings,
     pub stickers: Stickers, // pub users: Users, // pub database: DatabaseSettings,

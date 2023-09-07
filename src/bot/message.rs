@@ -1,8 +1,9 @@
 use teloxide::{dispatching::MessageFilterExt, dptree, requests::Requester, types::Message, Bot};
 
+use crate::settings::Settings;
 use crate::types::{DpHandler, DpHandlerResult};
 
-use crate::utils::stickers::{sticker_hello, sticker_sad};
+use crate::utils::stickers::send_sticker;
 
 pub fn bot_message_handler() -> DpHandler {
     // let message_handler = Update::filter_message;
@@ -12,7 +13,7 @@ pub fn bot_message_handler() -> DpHandler {
         .branch(Message::filter_left_chat_member().endpoint(handle_left_member))
 }
 
-async fn handle_new_member(bot: Bot, msg: Message) -> DpHandlerResult {
+async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> DpHandlerResult {
     let Some(new_members) = msg.new_chat_members() else {
         return Ok(());
     };
@@ -35,16 +36,16 @@ async fn handle_new_member(bot: Bot, msg: Message) -> DpHandlerResult {
             // .reply_to_message_id(msg.id)
             .await?;
     }
-    sticker_hello(bot, msg).await?;
+    send_sticker(&bot, &msg, settings.stickers.hello).await?;
     Ok(())
 }
 
-async fn handle_left_member(bot: Bot, msg: Message) -> DpHandlerResult {
+async fn handle_left_member(bot: &Bot, msg: &Message, settings: Settings) -> DpHandlerResult {
     let Some(member) = msg.left_chat_member() else {
         return Ok(());
     };
     let text = format!("sayonara {} ~~ 😭😭😭", member.full_name());
     bot.send_message(msg.chat.id, text).await?;
-    sticker_sad(bot, msg).await?;
+    send_sticker(bot, msg, settings.stickers.sad).await?;
     Ok(())
 }
