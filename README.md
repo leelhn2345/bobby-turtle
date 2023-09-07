@@ -28,6 +28,7 @@ ngrok http 3000
 ```sh
 # if use localtunnel
 # this is what i use
+# go search `npm local tunnel`
 lt --port 3000 --subdomain bobby
 # beware
 # max listener error occurs quite fun
