@@ -4,7 +4,7 @@ services:
   - envs:
       - key: APP_APPLICATION__PUBLIC_URL
         value: ${APP_URL}
-        scope: RUN_TIME
+        scope: RUN_AND_BUILD_TIME
       - key: TELOXIDE_TOKEN
         value:
         scope: RUN_TIME
@@ -17,7 +17,7 @@ services:
       http_path: /health_check
     http_port: 3000
     name: baldy-turtle-bot
-    dockerfile_path: Docker
+    dockerfile_path: Dockerfile
 alerts:
   - rule: DEPLOYMENT_FAILED
   - rule: DOMAIN_FAILED
