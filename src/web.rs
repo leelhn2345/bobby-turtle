@@ -20,7 +20,7 @@ pub async fn setup_axum_webhook(
     .parse()
     .expect("unable to parse host and/or port");
 
-    let url = format!("{}/webhook", settings.application.base_url)
+    let url = format!("{}/webhook", settings.application.webhook_url)
         .parse()
         .expect("unable to parse base url");
 

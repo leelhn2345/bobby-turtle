@@ -25,7 +25,7 @@ impl Environment {
     pub fn as_str(&self) -> &'static str {
         match self {
             Environment::Local => "local",
-            Environment::Production => "local",
+            Environment::Production => "production",
         }
     }
 }
