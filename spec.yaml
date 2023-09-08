@@ -1,0 +1,23 @@
+region: sgp
+name: pet-turtle-bot
+services:
+  - envs:
+      - key: APP_APPLICATION__PUBLIC_URL
+        value: ${APP_URL}
+        scope: RUN_TIME
+      - key: TELOXIDE_TOKEN
+        value:
+        scope: RUN_TIME
+    github:
+      repo: leelhn2345/turtle-bot
+      branch: main
+      deploy_on_push: true
+    instance_count: 1
+    health_check:
+      http_path: /health_check
+    http_port: 3000
+    name: baldy-turtle-bot
+    dockerfile_path: Docker
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED

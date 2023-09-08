@@ -6,3 +6,5 @@ target/
 .env
 .gitignore
 Dockerfile
+spec.yaml
+docker-compose.yaml

@@ -1,6 +1,6 @@
-FROM lukemathwalker/cargo-chef:latest-rust-slim-bullseye AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-slim-bookworm AS chef
 WORKDIR /app
-RUN apt update && apt install lld clang pkg-config openssl libssl-dev -y
+RUN apt update && apt install pkg-config openssl libssl-dev -y
 
 FROM chef AS planner
 COPY . .
@@ -15,13 +15,13 @@ COPY . .
 RUN cargo build --release --bin turtle-bot
 
 # We do not need the Rust toolchain to run the binary!
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 WORKDIR /app
-RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends openssl libssl-dev ca-certificates \
+RUN apt update -y \
+    && apt install -y --no-install-recommends openssl libssl-dev ca-certificates \
     # Clean up
-    && apt-get autoremove -y \
-    && apt-get clean -y \
+    && apt autoremove -y \
+    && apt clean -y \
     && rm -rf /var/lib/apt/lists/*
 COPY config config
 COPY --from=builder /app/target/release/turtle-bot turtle-bot
