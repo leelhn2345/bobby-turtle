@@ -6,5 +6,5 @@ pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
-    pub webhook_url: String,
+    pub public_url: String,
 }
