@@ -6,6 +6,7 @@ services:
         value: ${APP_URL}
         scope: RUN_TIME
       - key: TELOXIDE_TOKEN
+        value:
         scope: RUN_TIME
     github:
       repo: leelhn2345/turtle-bot
