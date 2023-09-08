@@ -2,13 +2,11 @@ name: CD
 
 on:
   push:
-    branches: -main
+    branches: main
 
 jobs:
-  deploy:
+  deploying:
+    name: deploy
     runs-on: ubuntu-latest
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: deploy to DO
+    steps:
+      - uses: actions/checkout@v3
