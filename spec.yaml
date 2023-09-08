@@ -3,10 +3,10 @@ name: tele-turtle-bot
 envs:
   - key: APP_APPLICATION__PUBLIC_URL
     value: ${APP_URL}
-    scope: RUN_TIME
+    scope: RUN_AND_BUILD_TIME
   - key: TELOXIDE_TOKEN
     value:
-    scope: RUN_TIME
+    scope: RUN_AND_BUILD_TIME
 services:
   - github:
       repo: leelhn2345/turtle-bot

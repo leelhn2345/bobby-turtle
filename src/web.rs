@@ -20,12 +20,15 @@ pub async fn setup_axum_webhook(
     .parse()
     .expect("unable to parse host and/or port");
 
+    // domain_path is digital ocean specific
+
     let url = format!("{}/webhook", settings.application.public_url)
         .parse()
-        .expect("unable to parse base url");
+        .expect("unable to parse url");
 
     let options = webhooks::Options::new(address, url);
     println!("{:#?}", options.url);
+    println!("{:#?}", options.address);
 
     let (mut listener, stop_flag, bot_router) = webhooks::axum_to_router(bot, options)
         .await
