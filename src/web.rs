@@ -26,7 +26,7 @@ pub async fn setup_axum_webhook(
         .parse()
         .expect("unable to parse url");
 
-    let options = webhooks::Options::new(address, url);
+    let options = webhooks::Options::new(address, url).drop_pending_updates();
     println!("{:#?}", options.url);
     println!("{:#?}", options.address);
 
