@@ -6,8 +6,11 @@ use crate::{
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
 #[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase", description = "hello master 🐢 😊")]
-pub enum GeneralCommand {
+#[command(
+    rename_rule = "lowercase",
+    description = "hello! here is how u can operate me~ 😊"
+)]
+pub enum OwnerCommand {
     #[command(description = "list down all commands")]
     Help,
     #[command(description = "a lovely hug! 🤗❤️")]
@@ -21,21 +24,21 @@ pub enum GeneralCommand {
     #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
     Party,
 }
-impl GeneralCommand {
+impl OwnerCommand {
     pub async fn parse_commands(
         bot: Bot,
         msg: Message,
         settings: Settings,
-        cmd: GeneralCommand,
+        cmd: OwnerCommand,
     ) -> MyResult<()> {
         match cmd {
-            GeneralCommand::Help => {
-                bot.send_message(msg.chat.id, GeneralCommand::descriptions().to_string())
+            OwnerCommand::Help => {
+                bot.send_message(msg.chat.id, OwnerCommand::descriptions().to_string())
                     .await?;
             }
-            GeneralCommand::Hug => send_sticker(&bot, &msg, settings.stickers.hug).await?,
-            GeneralCommand::Kiss => send_sticker(&bot, &msg, settings.stickers.kiss).await?,
-            GeneralCommand::Party => {
+            OwnerCommand::Hug => send_sticker(&bot, &msg, settings.stickers.hug).await?,
+            OwnerCommand::Kiss => send_sticker(&bot, &msg, settings.stickers.kiss).await?,
+            OwnerCommand::Party => {
                 send_many_stickers(&bot, &msg, settings.stickers.party_animals).await?
             }
             _ => {

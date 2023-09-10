@@ -19,8 +19,8 @@ pub async fn start_bot(
         .branch(
             Update::filter_message()
                 .branch(
-                    teloxide::filter_command::<GeneralCommand, _>()
-                        .endpoint(GeneralCommand::parse_commands),
+                    teloxide::filter_command::<OwnerCommand, _>()
+                        .endpoint(OwnerCommand::parse_commands),
                 )
                 .branch(
                     teloxide::filter_command::<UserCommand, _>()
