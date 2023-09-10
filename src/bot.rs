@@ -36,7 +36,7 @@ pub async fn start_bot(
                 )
                 .branch(
                     teloxide::filter_command::<UserCommand, _>()
-                        .filter(|msg: Message| msg.chat.is_private())
+                        // .filter(|msg: Message| msg.chat.is_private())
                         .endpoint(UserCommand::parse_commands),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
