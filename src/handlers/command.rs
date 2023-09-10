@@ -30,7 +30,7 @@ pub enum OwnerCommand {
     Feed,
     #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
     Party,
-    #[command(parse_with = message_to_send)]
+    #[command(parse_with = message_to_send,description="send message anonymously 😊")]
     SendMessage(i64, String),
 }
 impl OwnerCommand {
@@ -87,7 +87,7 @@ pub enum UserCommand {
     Start,
     #[command(description = "list down all commands")]
     Help,
-    #[command(parse_with = message_to_send)]
+    #[command(parse_with = message_to_send,description="send message anonymously 😊")]
     SendMessage(i64, String),
 }
 
