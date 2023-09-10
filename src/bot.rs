@@ -23,9 +23,9 @@ pub async fn start_bot(
                         .endpoint(GeneralCommand::parse_commands),
                 )
                 .branch(
-                    teloxide::filter_command::<AdminCommand, _>()
+                    teloxide::filter_command::<UserCommand, _>()
                         .filter(|msg: Message| msg.chat.is_private())
-                        .endpoint(AdminCommand::parse_commands),
+                        .endpoint(UserCommand::parse_commands),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
                 .branch(Message::filter_left_chat_member().endpoint(handle_left_member)),

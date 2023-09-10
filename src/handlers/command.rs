@@ -50,19 +50,19 @@ impl GeneralCommand {
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase")]
-pub enum AdminCommand {
+pub enum UserCommand {
     Start,
 }
 
-impl AdminCommand {
+impl UserCommand {
     pub async fn parse_commands(
         bot: Bot,
         msg: Message,
         settings: Settings,
-        cmd: AdminCommand,
+        cmd: UserCommand,
     ) -> MyResult<()> {
         match cmd {
-            AdminCommand::Start => {
+            UserCommand::Start => {
                 let text = match msg.chat.username() {
                     Some(x) => format!("hello @{}! 🐢", x),
                     None => String::from("hello friend!"),
