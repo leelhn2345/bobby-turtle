@@ -87,8 +87,12 @@ pub enum UserCommand {
     Start,
     #[command(description = "list down all commands")]
     Help,
+    #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
+    Party,
     #[command(parse_with = message_to_send,description="send message anonymously 😊")]
     SendMessage(i64, String),
+    #[command(description = "feed me!")]
+    Feed,
 }
 
 impl UserCommand {
@@ -108,11 +112,19 @@ impl UserCommand {
                 bot.send_message(msg.chat.id, text).await?;
             }
             UserCommand::Help => {
-                bot.send_message(msg.chat.id, OwnerCommand::descriptions().to_string())
+                bot.send_message(msg.chat.id, UserCommand::descriptions().to_string())
                     .await?;
+            }
+            UserCommand::Party => {
+                send_many_stickers(&bot, &msg, settings.stickers.party_animals).await?
             }
             UserCommand::SendMessage(chat_id, msg_string) => {
                 bot.send_message(ChatId(chat_id), msg_string).await?;
+            }
+            UserCommand::Feed => {
+                send_sticker(&bot, &msg, settings.stickers.coming_soon).await?;
+                bot.send_message(msg.chat.id, "~ feature coming soon ~")
+                    .await?;
             }
         }
         Ok(())
