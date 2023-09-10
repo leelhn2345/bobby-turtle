@@ -29,12 +29,12 @@ pub async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> My
     Ok(())
 }
 
-pub async fn handle_left_member(bot: &Bot, msg: &Message, settings: Settings) -> MyResult<()> {
+pub async fn handle_left_member(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
     let Some(member) = msg.left_chat_member() else {
         return Ok(());
     };
     let text = format!("sayonara {} ~~ 😭😭😭", member.full_name());
     bot.send_message(msg.chat.id, text).await?;
-    send_sticker(bot, msg, settings.stickers.sad).await?;
+    send_sticker(&bot, &msg, settings.stickers.sad).await?;
     Ok(())
 }
