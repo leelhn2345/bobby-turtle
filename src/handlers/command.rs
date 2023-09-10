@@ -6,10 +6,7 @@ use crate::{
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
 #[derive(BotCommands, Clone)]
-#[command(
-    rename_rule = "lowercase",
-    description = "hello! here is how u can operate me~ 😊"
-)]
+#[command(rename_rule = "lowercase", description = "hello owner!~ 😊")]
 pub enum OwnerCommand {
     #[command(description = "list down all commands")]
     Help,
@@ -52,7 +49,7 @@ impl OwnerCommand {
 }
 
 #[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase")]
+#[command(rename_rule = "lowercase", description = "hello user 😊~")]
 pub enum UserCommand {
     Start,
 }

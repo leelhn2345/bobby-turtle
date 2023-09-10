@@ -1,11 +1,13 @@
 use crate::handlers::command::*;
 use crate::handlers::system::*;
 use crate::settings::Settings;
+use std::collections::HashSet;
 use std::convert::Infallible;
 use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
+use teloxide::types::UserId;
 use teloxide::types::{Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
 
@@ -14,12 +16,21 @@ pub async fn start_bot(
     listener: impl UpdateListener<Err = Infallible>,
     settings: Settings,
 ) {
+    let owners = HashSet::from([2050440697, 220272763]);
+
     let handler = dptree::entry()
-        // .inspect(|u: Update| println!("{:#?}", u))
+        .inspect(|u: Update| println!("{:#?}", u))
         .branch(
             Update::filter_message()
+                // .filter(|msg: Message| msg.chat.id.is)
                 .branch(
                     teloxide::filter_command::<OwnerCommand, _>()
+                        .filter(move |msg: Message| {
+                            let user = msg.from();
+                            let Some(user_id) = user else { return false };
+                            let UserId(id) = user_id.id;
+                            owners.contains(&id)
+                        })
                         .endpoint(OwnerCommand::parse_commands),
                 )
                 .branch(
