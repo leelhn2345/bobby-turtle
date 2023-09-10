@@ -26,9 +26,7 @@ pub async fn setup_axum_webhook(
         .parse()
         .expect("unable to parse url");
 
-    let options = webhooks::Options::new(address, url);
-    println!("{:#?}", options.url);
-    println!("{:#?}", options.address);
+    let options = webhooks::Options::new(address, url).drop_pending_updates();
 
     let (mut listener, stop_flag, bot_router) = webhooks::axum_to_router(bot, options)
         .await
