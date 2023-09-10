@@ -13,6 +13,7 @@ services:
       branch: main
       deploy_on_push: true
     instance_count: 1
+    instance_size_slug: professional-xs
     health_check:
       http_path: /health_check
     http_port: 3000
