@@ -3,6 +3,7 @@ use crate::handlers::system::*;
 use crate::settings::Settings;
 use std::collections::HashSet;
 use std::convert::Infallible;
+use teloxide::dispatching::HandlerExt;
 use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
@@ -28,10 +29,14 @@ pub async fn start_bot(
         // .inspect(|u: Update| println!("{:#?}", u))
         .branch(
             Update::filter_message()
-                // .filter(|msg: Message| msg.chat.id.is)
                 .branch(
-                    teloxide::filter_command::<OwnerCommand, _>()
-                        .filter(move |msg: Message| check_is_owner(msg, &owners))
+                    dptree::filter(|msg: Message| msg.chat.is_private())
+                        .filter_command::<PrivateCommand>()
+                        .endpoint(PrivateCommand::parse_commands),
+                )
+                .branch(
+                    dptree::filter(move |msg: Message| check_is_owner(msg, &owners))
+                        .filter_command::<OwnerCommand>()
                         .endpoint(OwnerCommand::parse_commands),
                 )
                 .branch(
