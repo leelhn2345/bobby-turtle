@@ -19,5 +19,6 @@ teloxide = { version = "0.12.2", features = [
 ] }
 thiserror = "1.0.47"
 tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros"] }
+tracing = "0.1.37"
 utoipa = { version = "3.5.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "3.1.5", features = ["axum"] }
