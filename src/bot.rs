@@ -27,7 +27,7 @@ pub async fn start_bot(
     let owners: HashSet<u64> = HashSet::from([2050440697, 220272763]);
 
     let handler = dptree::entry()
-        .inspect(|u: Update| tracing::debug!(?u))
+        .inspect(|u: Update| tracing::debug!("{:#?}", u))
         .branch(
             Update::filter_message()
                 .branch(
