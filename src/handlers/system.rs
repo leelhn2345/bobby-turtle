@@ -2,6 +2,7 @@ use teloxide::{requests::Requester, types::Message, Bot};
 
 use crate::{settings::Settings, stickers::send_sticker, types::MyResult};
 
+#[tracing::instrument(skip_all)]
 pub async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
     let Some(new_members) = msg.new_chat_members() else {
         return Ok(());
@@ -24,11 +25,13 @@ pub async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> My
         bot.send_message(msg.chat.id, text)
             // .reply_to_message_id(msg.id)
             .await?;
+        tracing::info!("{} has joined chat", member.first_name);
     }
     send_sticker(&bot, &msg, settings.stickers.hello).await?;
     Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 pub async fn handle_left_member(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
     let Some(member) = msg.left_chat_member() else {
         return Ok(());
@@ -36,5 +39,6 @@ pub async fn handle_left_member(bot: Bot, msg: Message, settings: Settings) -> M
     let text = format!("sayonara {} ~~ 😭😭😭", member.full_name());
     bot.send_message(msg.chat.id, text).await?;
     send_sticker(&bot, &msg, settings.stickers.sad).await?;
+    tracing::info!("{} has left chat", member.first_name);
     Ok(())
 }
