@@ -1,22 +1,34 @@
 use crate::handlers::command::*;
 use crate::handlers::system::*;
+use crate::handlers::vulgar::check_vulgar;
+use crate::handlers::vulgar::scold_vulgar_message;
 use crate::settings::Settings;
+use crate::types::MyResult;
 use std::collections::HashSet;
 use std::convert::Infallible;
-use teloxide::dispatching::HandlerExt;
+
 use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
+use teloxide::requests::Requester;
 use teloxide::types::UserId;
 use teloxide::types::{Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
 
+#[tracing::instrument(skip_all)]
 fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
     let user = msg.from();
     let Some(user_id) = user else { return false };
     let UserId(id) = user_id.id;
+    tracing::info!("yes it is owner!");
     owners.contains(&id)
+}
+
+#[tracing::instrument(skip_all)]
+async fn dummy_func(bot: Bot, msg: Message) -> MyResult<()> {
+    bot.send_message(msg.chat.id, "hello").await?;
+    Ok(())
 }
 
 pub async fn start_bot(
@@ -31,13 +43,13 @@ pub async fn start_bot(
         .branch(
             Update::filter_message()
                 .branch(
-                    dptree::filter(|msg: Message| msg.chat.is_private())
-                        .filter_command::<PrivateCommand>()
+                    teloxide::filter_command::<PrivateCommand, _>()
+                        .filter(|msg: Message| msg.chat.is_private())
                         .endpoint(PrivateCommand::parse_commands),
                 )
                 .branch(
-                    dptree::filter(move |msg: Message| check_is_owner(msg, &owners))
-                        .filter_command::<OwnerCommand>()
+                    teloxide::filter_command::<OwnerCommand, _>()
+                        .filter(move |msg: Message| check_is_owner(msg, &owners))
                         .endpoint(OwnerCommand::parse_commands),
                 )
                 .branch(
@@ -46,7 +58,8 @@ pub async fn start_bot(
                         .endpoint(UserCommand::parse_commands),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
-                .branch(Message::filter_left_chat_member().endpoint(handle_left_member)),
+                .branch(Message::filter_left_chat_member().endpoint(handle_left_member))
+                .branch(dptree::filter(check_vulgar).endpoint(scold_vulgar_message)),
         );
 
     Dispatcher::builder(bot, handler)
