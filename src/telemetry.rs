@@ -7,7 +7,6 @@ use crate::settings::Environment;
 
 pub fn init_tracing(env: Environment, env_filter: String) {
     let env_layer = EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new(env_filter));
-    // let env_layer = EnvFilter::new("turtle-bot=info");
 
     let emit_bunyan = env == Environment::Production;
     let bunyan_json_layer = JsonStorageLayer.with_filter(filter_fn(move |_| emit_bunyan));
