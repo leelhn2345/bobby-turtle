@@ -1,8 +1,16 @@
 use dotenvy::dotenv;
 
+#[derive(PartialEq)]
 pub enum Environment {
     Local,
     Production,
+}
+
+pub fn get_environment() -> Environment {
+    std::env::var("APP_ENVIRONMENT")
+        .unwrap_or_else(|_| "local".into())
+        .try_into()
+        .expect("failed to parse APP_ENVIRONMENT")
 }
 
 impl TryFrom<String> for Environment {

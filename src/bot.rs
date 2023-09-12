@@ -3,6 +3,7 @@ use crate::handlers::system::*;
 use crate::settings::Settings;
 use std::collections::HashSet;
 use std::convert::Infallible;
+use teloxide::dispatching::HandlerExt;
 use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
@@ -17,6 +18,7 @@ fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
     let UserId(id) = user_id.id;
     owners.contains(&id)
 }
+
 pub async fn start_bot(
     bot: Bot,
     listener: impl UpdateListener<Err = Infallible>,
@@ -25,13 +27,17 @@ pub async fn start_bot(
     let owners: HashSet<u64> = HashSet::from([2050440697, 220272763]);
 
     let handler = dptree::entry()
-        // .inspect(|u: Update| println!("{:#?}", u))
+        .inspect(|u: Update| tracing::debug!("{:#?}", u))
         .branch(
             Update::filter_message()
-                // .filter(|msg: Message| msg.chat.id.is)
                 .branch(
-                    teloxide::filter_command::<OwnerCommand, _>()
-                        .filter(move |msg: Message| check_is_owner(msg, &owners))
+                    dptree::filter(|msg: Message| msg.chat.is_private())
+                        .filter_command::<PrivateCommand>()
+                        .endpoint(PrivateCommand::parse_commands),
+                )
+                .branch(
+                    dptree::filter(move |msg: Message| check_is_owner(msg, &owners))
+                        .filter_command::<OwnerCommand>()
                         .endpoint(OwnerCommand::parse_commands),
                 )
                 .branch(

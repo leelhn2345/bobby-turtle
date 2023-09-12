@@ -13,7 +13,7 @@ use teloxide::{
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
-    description = "hello owner!~ 😊. these are the available commands"
+    description = "hello owner!~ 🐢😊. \nthese are the available commands"
 )]
 pub enum OwnerCommand {
     #[command(description = "list down all commands")]
@@ -30,8 +30,6 @@ pub enum OwnerCommand {
     Feed,
     #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
     Party,
-    #[command(parse_with = message_to_send,description="send message anonymously 😊")]
-    SendMessage(i64, String),
 }
 impl OwnerCommand {
     pub async fn parse_commands(
@@ -51,10 +49,8 @@ impl OwnerCommand {
                 send_many_stickers(&bot, &msg, settings.stickers.party_animals).await?
             }
             OwnerCommand::Love => send_sticker(&bot, &msg, settings.stickers.love).await?,
-            OwnerCommand::SendMessage(chat_id, msg_string) => {
-                bot.send_message(ChatId(chat_id), msg_string).await?;
-            }
-            _ => {
+
+            OwnerCommand::Feed => {
                 send_sticker(&bot, &msg, settings.stickers.coming_soon).await?;
                 bot.send_message(msg.chat.id, "~ feature coming soon ~")
                     .await?;
@@ -81,16 +77,13 @@ fn message_to_send(input: String) -> Result<(i64, String), ParseError> {
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
-    description = "hello user 😊~. These are the available commands."
+    description = "hello user 🐢😊~. \nThese are the available commands."
 )]
 pub enum UserCommand {
-    Start,
     #[command(description = "list down all commands")]
     Help,
     #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
     Party,
-    #[command(parse_with = message_to_send,description="send message anonymously 😊")]
-    SendMessage(i64, String),
     #[command(description = "feed me!")]
     Feed,
 }
@@ -103,14 +96,6 @@ impl UserCommand {
         cmd: UserCommand,
     ) -> MyResult<()> {
         match cmd {
-            UserCommand::Start => {
-                let text = match msg.chat.username() {
-                    Some(x) => format!("hello @{}! 🐢", x),
-                    None => String::from("hello friend!"),
-                };
-                send_sticker(&bot, &msg, settings.stickers.hello).await?;
-                bot.send_message(msg.chat.id, text).await?;
-            }
             UserCommand::Help => {
                 bot.send_message(msg.chat.id, UserCommand::descriptions().to_string())
                     .await?;
@@ -118,13 +103,48 @@ impl UserCommand {
             UserCommand::Party => {
                 send_many_stickers(&bot, &msg, settings.stickers.party_animals).await?
             }
-            UserCommand::SendMessage(chat_id, msg_string) => {
-                bot.send_message(ChatId(chat_id), msg_string).await?;
-            }
+
             UserCommand::Feed => {
                 send_sticker(&bot, &msg, settings.stickers.coming_soon).await?;
                 bot.send_message(msg.chat.id, "~ feature coming soon ~")
                     .await?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(BotCommands, Clone)]
+#[command(description = "Hello hello~~ 🐢🐢", rename_rule = "lowercase")]
+pub enum PrivateCommand {
+    Start,
+    Help,
+    #[command(parse_with = message_to_send,description="send message anonymously 😊")]
+    SendMessage(i64, String),
+}
+
+impl PrivateCommand {
+    pub async fn parse_commands(
+        bot: Bot,
+        msg: Message,
+        settings: Settings,
+        cmd: PrivateCommand,
+    ) -> MyResult<()> {
+        match cmd {
+            PrivateCommand::Start => {
+                let text = match msg.chat.username() {
+                    Some(x) => format!("hello @{}! 🐢", x),
+                    None => String::from("hello friend!"),
+                };
+                send_sticker(&bot, &msg, settings.stickers.hello).await?;
+                bot.send_message(msg.chat.id, text).await?;
+            }
+            PrivateCommand::Help => {
+                bot.send_message(msg.chat.id, PrivateCommand::descriptions().to_string())
+                    .await?;
+            }
+            PrivateCommand::SendMessage(chat_id, msg_string) => {
+                bot.send_message(ChatId(chat_id), msg_string).await?;
             }
         }
         Ok(())
