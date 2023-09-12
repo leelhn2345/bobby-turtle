@@ -14,8 +14,9 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
     Standard + Sex + Zealous + Custom(set)
 });
 
+/// this filter doesnt work on self
 #[tracing::instrument(skip_all)]
-pub fn check_vulgar(msg: Message) -> bool {
+pub async fn check_vulgar(msg: Message) -> bool {
     VULGARITIES.check(msg.text().unwrap_or_default())
 }
 
