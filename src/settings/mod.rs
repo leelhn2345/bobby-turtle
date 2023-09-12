@@ -6,7 +6,7 @@ mod environment;
 mod stickers;
 
 use application::*;
-use environment::*;
+pub use environment::*;
 use serde::Deserialize;
 use stickers::*;
 #[derive(Deserialize, Debug, Clone)]
@@ -17,16 +17,11 @@ pub struct Settings {
     // pub database: DatabaseSettings,
 }
 
-pub fn get_settings() -> Result<Settings, ConfigError> {
+pub fn get_settings(env: &Environment) -> Result<Settings, ConfigError> {
     let base_path = std::env::current_dir().expect("failed to determine current directory");
     let config_directory = base_path.join("config");
 
-    let environment: Environment = std::env::var("APP_ENVIRONMENT")
-        .unwrap_or_else(|_| "local".into())
-        .try_into()
-        .expect("failed to parse APP_ENVIRONMENT");
-
-    let environment_filename = format!("{}.yaml", environment.as_str());
+    let environment_filename = format!("{}.yaml", env.as_str());
 
     let settings = config::Config::builder()
         .add_source(config::File::from(config_directory.join("base.yaml")))
