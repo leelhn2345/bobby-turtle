@@ -1,6 +1,7 @@
 use crate::handlers::command::*;
 use crate::handlers::system::*;
 use crate::settings::Settings;
+use crate::types::MyResult;
 use std::collections::HashSet;
 use std::convert::Infallible;
 use teloxide::dispatching::HandlerExt;
@@ -8,6 +9,7 @@ use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
+use teloxide::requests::Requester;
 use teloxide::types::UserId;
 use teloxide::types::{Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
@@ -17,6 +19,11 @@ fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
     let Some(user_id) = user else { return false };
     let UserId(id) = user_id.id;
     owners.contains(&id)
+}
+
+async fn dummy_func(bot: Bot, msg: Message) -> MyResult<()> {
+    bot.send_message(msg.chat.id, "hello").await?;
+    Ok(())
 }
 
 pub async fn start_bot(
@@ -47,7 +54,8 @@ pub async fn start_bot(
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
                 .branch(Message::filter_left_chat_member().endpoint(handle_left_member)),
-        );
+        )
+        .branch(Update::filter_edited_message().endpoint(dummy_func));
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![settings])

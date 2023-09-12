@@ -17,6 +17,7 @@ pub fn init_tracing(env: Environment, env_filter: String) {
     let emit_pretty = env == Environment::Local;
     let pretty_formatting_layer = fmt::layer()
         .without_time()
+        .with_target(false)
         .with_filter(filter_fn(move |_| emit_pretty));
 
     let subscriber = registry()
