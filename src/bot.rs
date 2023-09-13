@@ -26,6 +26,7 @@ async fn setup_me(bot: &Bot) {
     let me = bot.get_me().await.expect("cannot get details about bot");
 
     BOT_DETAILS.set(me).unwrap();
+    tracing::info!("successfully set bot details")
 }
 
 #[tracing::instrument(skip_all)]
