@@ -1,15 +1,14 @@
 use teloxide::{requests::Requester, types::Message, Bot};
 
+use crate::bot::BOT_ME;
 use crate::{settings::Settings, stickers::send_sticker, types::MyResult};
-
 #[tracing::instrument(skip_all)]
 pub async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
     let Some(new_members) = msg.new_chat_members() else {
         return Ok(());
     };
-    let bot_details = bot.get_me().await?;
-    let bot_username = bot_details.username.as_ref().unwrap();
-    let bot_name = &bot_details.first_name;
+    let bot_username = BOT_ME.username.as_ref().unwrap();
+    let bot_name = &BOT_ME.first_name;
     for member in new_members {
         let text = match &member.username {
             Some(x) => {

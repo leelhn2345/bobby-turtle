@@ -7,14 +7,26 @@ use crate::types::MyResult;
 use std::collections::HashSet;
 use std::convert::Infallible;
 
+use once_cell::sync::Lazy;
+use std::sync::OnceLock;
 use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
 use teloxide::requests::Requester;
 use teloxide::types::UserId;
-use teloxide::types::{Message, Update};
+use teloxide::types::{Me, Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
+
+pub static BOT_ME: Lazy<&Me> = Lazy::new(|| BOT_DETAILS.get().unwrap());
+
+static BOT_DETAILS: OnceLock<Me> = OnceLock::new();
+
+async fn setup_me(bot: &Bot) {
+    let me = bot.get_me().await.expect("cannot get details about bot");
+
+    BOT_DETAILS.set(me).unwrap();
+}
 
 #[tracing::instrument(skip_all)]
 fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
@@ -36,6 +48,7 @@ pub async fn start_bot(
     listener: impl UpdateListener<Err = Infallible>,
     settings: Settings,
 ) {
+    setup_me(&bot).await;
     let owners: HashSet<u64> = HashSet::from([2050440697, 220272763]);
 
     let handler = dptree::entry()

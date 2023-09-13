@@ -4,8 +4,8 @@ use censor::Censor::{self, Custom, Sex, Standard, Zealous};
 use once_cell::sync::Lazy;
 use teloxide::{payloads::SendMessageSetters, requests::Requester, types::Message, Bot};
 
+use crate::bot::BOT_ME;
 use crate::{settings::Settings, stickers::send_sticker, types::MyResult};
-
 static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
     let custom_words: Vec<&str> = vec!["knn", "ccb", "wtf", "wtfbbq", "omfg", "kpkb"];
 
@@ -17,6 +17,11 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
 /// this filter doesnt work on self
 #[tracing::instrument(skip_all)]
 pub fn check_vulgar(msg: Message) -> bool {
+    let Some(user) = msg.from() else { return false };
+
+    if user.username == BOT_ME.username {
+        return false;
+    }
     VULGARITIES.check(msg.text().unwrap_or_default())
 }
 
