@@ -11,12 +11,12 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
 
     let set: HashSet<String> = custom_words.into_iter().map(ToString::to_string).collect();
 
-    Standard + Sex + Zealous + Custom(set)
+    Standard + Sex + Zealous + Custom(set) - "hell"
 });
 
 /// this filter doesnt work on self
 #[tracing::instrument(skip_all)]
-pub async fn check_vulgar(msg: Message) -> bool {
+pub fn check_vulgar(msg: Message) -> bool {
     VULGARITIES.check(msg.text().unwrap_or_default())
 }
 
