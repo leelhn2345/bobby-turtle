@@ -7,27 +7,19 @@ use crate::types::MyResult;
 use std::collections::HashSet;
 use std::convert::Infallible;
 
-use once_cell::sync::Lazy;
-use std::sync::OnceLock;
 use teloxide::dispatching::MessageFilterExt;
 use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
 use teloxide::requests::Requester;
 use teloxide::types::UserId;
-use teloxide::types::{Me, Message, Update};
+use teloxide::types::{Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
 
-pub static BOT_ME: Lazy<&Me> = Lazy::new(|| BOT_DETAILS.get().unwrap());
+mod jobs;
+mod me;
 
-static BOT_DETAILS: OnceLock<Me> = OnceLock::new();
-
-async fn setup_me(bot: &Bot) {
-    let me = bot.get_me().await.expect("cannot get details about bot");
-
-    BOT_DETAILS.set(me).unwrap();
-    tracing::info!("successfully set bot details")
-}
+pub use me::*;
 
 #[tracing::instrument(skip_all)]
 fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
