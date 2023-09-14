@@ -16,7 +16,7 @@ use teloxide::types::UserId;
 use teloxide::types::{Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
 
-mod jobs;
+mod job;
 mod me;
 
 pub use me::*;
