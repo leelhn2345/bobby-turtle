@@ -31,11 +31,12 @@ async fn setup_me(bot: &Bot) {
 
 #[tracing::instrument(skip_all)]
 fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
-    let user = msg.from();
-    let Some(user_id) = user else { return false };
-    let UserId(id) = user_id.id;
-    tracing::info!("yes it is owner!");
-    owners.contains(&id)
+    msg.from()
+        .map(|user| {
+            let UserId(id) = user.id;
+            owners.contains(&id)
+        })
+        .unwrap_or_default()
 }
 
 #[tracing::instrument(skip_all)]
