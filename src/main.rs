@@ -18,11 +18,11 @@ use web::setup_axum_webhook;
 async fn main() {
     let env = get_environment();
     let settings = get_settings(&env).expect("failed to read settings");
-    init_tracing(env, "turtle_bot=info".into());
+    init_tracing(&env, "turtle_bot=info".into());
 
     tracing::info!("starting app~");
     let tele_bot = Bot::from_env();
     let listener = setup_axum_webhook(&settings, tele_bot.clone()).await;
 
-    start_bot(tele_bot, listener, settings).await;
+    start_bot(tele_bot, listener, settings, env).await;
 }

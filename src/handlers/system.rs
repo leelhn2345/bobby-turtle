@@ -26,7 +26,7 @@ pub async fn handle_new_member(bot: Bot, msg: Message, settings: Settings) -> My
             .await?;
         tracing::info!("{} has joined chat", member.first_name);
     }
-    send_sticker(&bot, &msg, settings.stickers.hello).await?;
+    send_sticker(&bot, &msg.chat.id, settings.stickers.hello).await?;
     Ok(())
 }
 
@@ -37,7 +37,7 @@ pub async fn handle_left_member(bot: Bot, msg: Message, settings: Settings) -> M
     };
     let text = format!("sayonara {} ~~ 😭😭😭", member.full_name());
     bot.send_message(msg.chat.id, text).await?;
-    send_sticker(&bot, &msg, settings.stickers.sad).await?;
+    send_sticker(&bot, &msg.chat.id, settings.stickers.sad).await?;
     tracing::info!("{} has left chat", member.first_name);
     Ok(())
 }

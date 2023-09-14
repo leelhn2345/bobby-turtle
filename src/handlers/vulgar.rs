@@ -27,7 +27,7 @@ pub fn check_vulgar(msg: Message) -> bool {
 
 #[tracing::instrument(skip_all)]
 pub async fn scold_vulgar_message(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
-    send_sticker(&bot, &msg, settings.stickers.angry).await?;
+    send_sticker(&bot, &msg.chat.id, settings.stickers.angry).await?;
     bot.send_message(msg.chat.id, "no vulgarities! 😡")
         .reply_to_message_id(msg.id)
         .await?;
