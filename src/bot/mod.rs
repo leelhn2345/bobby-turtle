@@ -2,6 +2,7 @@ use crate::handlers::command::*;
 use crate::handlers::system::*;
 use crate::handlers::vulgar::check_vulgar;
 use crate::handlers::vulgar::scold_vulgar_message;
+use crate::settings::Environment;
 use crate::settings::Settings;
 use crate::types::MyResult;
 use std::collections::HashSet;
@@ -12,6 +13,7 @@ use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
 use teloxide::dptree;
 use teloxide::prelude::LoggingErrorHandler;
 use teloxide::requests::Requester;
+
 use teloxide::types::UserId;
 use teloxide::types::{Message, Update};
 use teloxide::{update_listeners::UpdateListener, Bot};
@@ -20,6 +22,8 @@ mod job;
 mod me;
 
 pub use me::*;
+
+use self::job::start_jobs;
 
 #[tracing::instrument(skip_all)]
 fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
@@ -41,9 +45,17 @@ pub async fn start_bot(
     bot: Bot,
     listener: impl UpdateListener<Err = Infallible>,
     settings: Settings,
+    env: Environment,
 ) {
     setup_me(&bot).await;
     let owners: HashSet<u64> = HashSet::from([2050440697, 220272763]);
+
+    start_jobs(&bot, &settings, env)
+        .await
+        .expect("cannot start job");
+    // bot.send_message(ChatId(-1001838253386), "hello")
+    //     .await
+    //     .expect("this line has runtime error");
 
     let handler = dptree::entry()
         .inspect(|u: Update| tracing::debug!("{:#?}", u))
