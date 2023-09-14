@@ -1,6 +1,7 @@
-use chrono::Local;
+use chrono::Utc;
+use chrono_tz::Singapore;
 
 pub fn datetime_now() -> String {
-    let now = Local::now();
-    now.format("%v\n%r").to_string()
+    let now = Utc::now().with_timezone(&Singapore);
+    now.format("%v\n%r - GMT+8").to_string()
 }
