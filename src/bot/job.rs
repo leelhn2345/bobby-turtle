@@ -56,7 +56,7 @@ async fn greeting_morning(bot: Bot, settings: Settings, chat_id: ChatId) -> MyRe
 
 #[instrument(skip_all)]
 async fn greeting_night(bot: Bot, settings: Settings, chat_id: ChatId) -> MyResult<Job> {
-    let job = Job::new_async("0 30 15 * * * *", move |_uuid, _lock| {
+    let job = Job::new_async("0 00 15 * * * *", move |_uuid, _lock| {
         let bot = bot.clone();
         let settings = settings.clone();
         Box::pin(async move {
