@@ -1,24 +1,21 @@
-use crate::handlers::owner::OwnerCommand;
+use crate::handlers::owner::{OwnerGroupCommand, OwnerPrivateCommand};
 use crate::handlers::private_chat::PrivateCommand;
 use crate::handlers::system::*;
-use crate::handlers::user::UserCommand;
+use crate::handlers::user::{UserGroupCommand, UserPrivateCommand};
 use crate::handlers::vulgar::check_vulgar;
 use crate::handlers::vulgar::scold_vulgar_message;
 use crate::jobs;
 use crate::settings::Environment;
 use crate::settings::Settings;
-use crate::types::MyResult;
 use std::collections::HashSet;
 use std::convert::Infallible;
-
-use teloxide::dispatching::MessageFilterExt;
-use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
+use teloxide::dispatching::{Dispatcher, HandlerExt, MessageFilterExt, UpdateFilterExt};
 use teloxide::dptree;
+
 use teloxide::prelude::LoggingErrorHandler;
 use teloxide::requests::Requester;
 
-use teloxide::types::UserId;
-use teloxide::types::{Message, Update};
+use teloxide::types::{Message, Update, UserId};
 use teloxide::{update_listeners::UpdateListener, Bot};
 
 use jobs::start_jobs;
@@ -28,9 +25,9 @@ use std::sync::OnceLock;
 use teloxide::types::Me;
 use tracing::instrument;
 
-pub static BOT_ME: Lazy<&Me> = Lazy::new(|| BOT_DETAILS.get().unwrap());
-
+static OWNERS: Lazy<HashSet<u64>> = Lazy::new(|| HashSet::from([2050440697, 220272763]));
 static BOT_DETAILS: OnceLock<Me> = OnceLock::new();
+pub static BOT_ME: Lazy<&Me> = Lazy::new(|| BOT_DETAILS.get().unwrap());
 
 #[instrument(name = "set up bot details", skip_all)]
 pub async fn setup_me(bot: &Bot) {
@@ -41,20 +38,13 @@ pub async fn setup_me(bot: &Bot) {
     tracing::info!("success");
 }
 
-#[tracing::instrument(skip_all)]
-fn check_is_owner(msg: Message, owners: &HashSet<u64>) -> bool {
+pub fn check_is_owner(msg: &Message) -> bool {
     msg.from()
         .map(|user| {
             let UserId(id) = user.id;
-            owners.contains(&id)
+            OWNERS.contains(&id)
         })
         .unwrap_or_default()
-}
-
-#[tracing::instrument(skip_all)]
-async fn dummy_func(bot: Bot, msg: Message) -> MyResult<()> {
-    bot.send_message(msg.chat.id, "hello").await?;
-    Ok(())
 }
 
 /// Dispatch logic for teloxide bot
@@ -65,33 +55,45 @@ pub async fn start_bot(
     env: Environment,
 ) {
     setup_me(&bot).await;
-    let owners: HashSet<u64> = HashSet::from([2050440697, 220272763]);
 
     start_jobs(&bot, &settings, env)
         .await
         .expect("cannot start job");
-    // bot.send_message(ChatId(-1001838253386), "hello")
-    //     .await
-    //     .expect("this line has runtime error");
 
     let handler = dptree::entry()
         .inspect(|u: Update| tracing::debug!("{:#?}", u))
         .branch(
             Update::filter_message()
                 .branch(
+                    dptree::filter(|msg: Message| msg.chat.is_group())
+                        .branch(
+                            dptree::filter(check_is_owner)
+                                .filter_command::<OwnerGroupCommand>()
+                                .endpoint(OwnerGroupCommand::parse_commands),
+                        )
+                        .branch(
+                            dptree::entry()
+                                .filter_command::<UserGroupCommand>()
+                                .endpoint(UserGroupCommand::parse_commands),
+                        ),
+                )
+                .branch(
+                    dptree::filter(|msg: Message| msg.chat.is_private())
+                        .branch(
+                            dptree::filter(check_is_owner)
+                                .filter_command::<OwnerPrivateCommand>()
+                                .endpoint(OwnerPrivateCommand::parse_commands),
+                        )
+                        .branch(
+                            dptree::entry()
+                                .filter_command::<UserPrivateCommand>()
+                                .endpoint(UserPrivateCommand::parse_commands),
+                        ),
+                )
+                .branch(
                     teloxide::filter_command::<PrivateCommand, _>()
                         .filter(|msg: Message| msg.chat.is_private())
                         .endpoint(PrivateCommand::parse_commands),
-                )
-                .branch(
-                    teloxide::filter_command::<OwnerCommand, _>()
-                        .filter(move |msg: Message| check_is_owner(msg, &owners))
-                        .endpoint(OwnerCommand::parse_group_commands),
-                )
-                .branch(
-                    teloxide::filter_command::<UserCommand, _>()
-                        // .filter(|msg: Message| msg.chat.is_private())
-                        .endpoint(UserCommand::parse_group_commands),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
                 .branch(Message::filter_left_chat_member().endpoint(handle_left_member))

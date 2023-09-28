@@ -4,7 +4,7 @@ use censor::Censor::{self, Custom, Standard, Zealous};
 use once_cell::sync::Lazy;
 use teloxide::{payloads::SendMessageSetters, requests::Requester, types::Message, Bot};
 
-use crate::bot::BOT_ME;
+use crate::bot::{check_is_owner, BOT_ME};
 use crate::{settings::Settings, stickers::send_sticker, types::MyResult};
 
 static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
@@ -20,7 +20,7 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
 pub fn check_vulgar(msg: Message) -> bool {
     let Some(user) = msg.from() else { return false };
 
-    if user.username == BOT_ME.username {
+    if user.username == BOT_ME.username || check_is_owner(&msg) {
         return false;
     }
     VULGARITIES.check(msg.text().unwrap_or_default())
