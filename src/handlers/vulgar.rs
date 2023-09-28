@@ -20,7 +20,7 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
 pub fn check_vulgar(msg: Message) -> bool {
     let Some(user) = msg.from() else { return false };
 
-    if user.username == BOT_ME.username || check_is_owner(&msg) {
+    if user.username == BOT_ME.username || check_is_owner(msg.clone()) {
         return false;
     }
     VULGARITIES.check(msg.text().unwrap_or_default())
