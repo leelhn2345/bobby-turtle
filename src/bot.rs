@@ -1,5 +1,7 @@
-use crate::handlers::command::*;
+use crate::handlers::owner::OwnerCommand;
+use crate::handlers::private_chat::PrivateCommand;
 use crate::handlers::system::*;
+use crate::handlers::user::UserCommand;
 use crate::handlers::vulgar::check_vulgar;
 use crate::handlers::vulgar::scold_vulgar_message;
 use crate::jobs;
@@ -33,7 +35,8 @@ static BOT_DETAILS: OnceLock<Me> = OnceLock::new();
 #[instrument(name = "set up bot details", skip_all)]
 pub async fn setup_me(bot: &Bot) {
     let me = bot.get_me().await.expect("cannot get details about bot");
-    tracing::debug!("{:#?}", me);
+    let username = me.username.as_ref().unwrap();
+    tracing::debug!("starting {}", username);
     BOT_DETAILS.set(me).unwrap();
     tracing::info!("success");
 }
@@ -83,12 +86,12 @@ pub async fn start_bot(
                 .branch(
                     teloxide::filter_command::<OwnerCommand, _>()
                         .filter(move |msg: Message| check_is_owner(msg, &owners))
-                        .endpoint(OwnerCommand::parse_commands),
+                        .endpoint(OwnerCommand::parse_group_commands),
                 )
                 .branch(
                     teloxide::filter_command::<UserCommand, _>()
                         // .filter(|msg: Message| msg.chat.is_private())
-                        .endpoint(UserCommand::parse_commands),
+                        .endpoint(UserCommand::parse_group_commands),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
                 .branch(Message::filter_left_chat_member().endpoint(handle_left_member))

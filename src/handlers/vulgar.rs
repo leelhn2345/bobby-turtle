@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use censor::Censor::{self, Custom, Sex, Standard, Zealous};
+use censor::Censor::{self, Custom, Standard, Zealous};
 use once_cell::sync::Lazy;
 use teloxide::{payloads::SendMessageSetters, requests::Requester, types::Message, Bot};
 
@@ -12,7 +12,7 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
 
     let set: HashSet<String> = custom_words.into_iter().map(ToString::to_string).collect();
 
-    Standard + Sex + Zealous + Custom(set) - "hell"
+    Standard + Zealous + Custom(set) - "hell"
 });
 
 /// this filter doesnt work on self

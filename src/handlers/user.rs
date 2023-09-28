@@ -23,7 +23,7 @@ pub enum UserCommand {
 }
 
 impl UserCommand {
-    pub async fn parse_commands(
+    pub async fn parse_group_commands(
         bot: Bot,
         msg: Message,
         settings: Settings,
@@ -50,4 +50,5 @@ impl UserCommand {
         }
         Ok(())
     }
+    pub async fn parse_private_commands() {}
 }

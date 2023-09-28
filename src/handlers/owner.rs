@@ -30,7 +30,7 @@ pub enum OwnerCommand {
     Now,
 }
 impl OwnerCommand {
-    pub async fn parse_commands(
+    pub async fn parse_group_commands(
         bot: Bot,
         msg: Message,
         settings: Settings,
@@ -59,4 +59,5 @@ impl OwnerCommand {
         }
         Ok(())
     }
+    pub async fn parse_private_commands() {}
 }
