@@ -2,53 +2,110 @@ use crate::{
     settings::Settings,
     stickers::{send_many_stickers, send_sticker},
     types::MyResult,
-    utils::datetime_now,
+    utils::{datetime_now, message_to_send},
 };
-use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
+use teloxide::{
+    requests::Requester,
+    types::{ChatId, Message},
+    utils::command::BotCommands,
+    Bot,
+};
 
 #[derive(BotCommands, Clone)]
-#[command(
-    rename_rule = "lowercase",
-    description = "hello user 🐢😊~. \nThese are the available commands."
-)]
-pub enum UserCommand {
-    #[command(description = "list down all commands")]
+#[command(rename_rule = "lowercase", description = "hello friend!~ 🐢😊.")]
+pub enum UserGroupCommand {
     Help,
-    #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
-    Party,
+    #[command(description = "a lovely hug! 🤗❤️")]
+    Hug,
+    // #[command(description = "greetings")]
+    // Greet,
+    #[command(description = "a passionate kiss")]
+    Kiss,
+    #[command(description = "give you my LOVE")]
+    Love,
     #[command(description = "feed me!")]
     Feed,
+    #[command(description = "IT'S PARTY TIME!! 🥳🥳")]
+    Party,
     #[command(description = "the current date & time")]
     Now,
 }
-
-impl UserCommand {
-    pub async fn parse_group_commands(
+impl UserGroupCommand {
+    pub async fn parse_commands(
         bot: Bot,
         msg: Message,
         settings: Settings,
-        cmd: UserCommand,
+        cmd: UserGroupCommand,
     ) -> MyResult<()> {
         match cmd {
-            UserCommand::Help => {
-                bot.send_message(msg.chat.id, UserCommand::descriptions().to_string())
+            UserGroupCommand::Help => {
+                bot.send_message(msg.chat.id, UserGroupCommand::descriptions().to_string())
                     .await?;
             }
-            UserCommand::Party => {
-                send_many_stickers(&bot, &msg.chat.id, settings.stickers.party_animals).await?;
+            UserGroupCommand::Hug => {
+                send_sticker(&bot, &msg.chat.id, settings.stickers.hug).await?
+            }
+            UserGroupCommand::Kiss => {
+                send_sticker(&bot, &msg.chat.id, settings.stickers.kiss).await?
+            }
+            UserGroupCommand::Party => {
+                send_many_stickers(&bot, &msg.chat.id, settings.stickers.party_animals).await?
+            }
+            UserGroupCommand::Love => {
+                send_sticker(&bot, &msg.chat.id, settings.stickers.love).await?
             }
 
-            UserCommand::Feed => {
+            UserGroupCommand::Feed => {
                 send_sticker(&bot, &msg.chat.id, settings.stickers.coming_soon).await?;
                 bot.send_message(msg.chat.id, "~ feature coming soon ~")
                     .await?;
             }
-
-            UserCommand::Now => {
+            UserGroupCommand::Now => {
                 bot.send_message(msg.chat.id, datetime_now()).await?;
             }
         }
         Ok(())
     }
-    pub async fn parse_private_commands() {}
+}
+
+#[derive(BotCommands, Clone)]
+#[command(description = "Hello hello~~ 🐢🐢", rename_rule = "lowercase")]
+pub enum UserPrivateCommand {
+    Start,
+    Help,
+    #[command(parse_with = message_to_send, description="send message anonymously 😊")]
+    SendMessage(i64, String),
+    #[command(description = "the current date & time")]
+    Now,
+}
+
+impl UserPrivateCommand {
+    pub async fn parse_commands(
+        bot: Bot,
+        msg: Message,
+        settings: Settings,
+        cmd: UserPrivateCommand,
+    ) -> MyResult<()> {
+        match cmd {
+            UserPrivateCommand::Start => {
+                let text = match msg.chat.username() {
+                    Some(x) => format!("hello @{}! 🐢", x),
+                    None => String::from("hello friend!"),
+                };
+                send_sticker(&bot, &msg.chat.id, settings.stickers.hello).await?;
+                bot.send_message(msg.chat.id, text).await?;
+            }
+            UserPrivateCommand::Help => {
+                bot.send_message(msg.chat.id, UserPrivateCommand::descriptions().to_string())
+                    .await?;
+            }
+            UserPrivateCommand::SendMessage(chat_id, msg_string) => {
+                bot.send_message(ChatId(chat_id), msg_string).await?;
+            }
+            UserPrivateCommand::Now => {
+                bot.send_message(msg.chat.id, datetime_now()).await?;
+            }
+        }
+        Ok(())
+    }
 }

@@ -1,4 +1,4 @@
-use crate::handlers::owner::{OwnerGroupCommand, OwnerPrivateCommand};
+use crate::handlers::admin::AdminCommand;
 use crate::handlers::system::*;
 use crate::handlers::user::{UserGroupCommand, UserPrivateCommand};
 use crate::handlers::vulgar::check_vulgar;
@@ -64,24 +64,16 @@ pub async fn start_bot(
         .branch(
             Update::filter_message()
                 .branch(
-                    dptree::filter(|msg: Message| msg.chat.is_chat())
-                        .branch(
-                            dptree::filter(check_is_owner)
-                                .filter_command::<OwnerGroupCommand>()
-                                .endpoint(OwnerGroupCommand::parse_commands),
-                        )
-                        .branch(
-                            dptree::entry()
-                                .filter_command::<UserGroupCommand>()
-                                .endpoint(UserGroupCommand::parse_commands),
-                        ),
+                    dptree::filter(|msg: Message| msg.chat.is_supergroup() || msg.chat.is_group())
+                        .filter_command::<UserGroupCommand>()
+                        .endpoint(UserGroupCommand::parse_commands),
                 )
                 .branch(
                     dptree::filter(|msg: Message| msg.chat.is_private())
                         .branch(
                             dptree::filter(check_is_owner)
-                                .filter_command::<OwnerPrivateCommand>()
-                                .endpoint(OwnerPrivateCommand::parse_commands),
+                                .filter_command::<AdminCommand>()
+                                .endpoint(AdminCommand::parse_commands),
                         )
                         .branch(
                             dptree::entry()
