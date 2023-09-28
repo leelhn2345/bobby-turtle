@@ -15,14 +15,10 @@ stickers:
     - "CAACAgIAAxkBAAEluTNk-JdxDlrqhNEJ42xFklGpqxHC2QACxxkAAuCZ8EgQ05nTiGAPwTAE"
     # cow
     - "CAACAgQAAxkBAAEluTVk-JeP1Wvl8pIF3-hfieeB5z1lLAACOhgAAqbxcR6cYA5lHoA_dDAE"
-    # ghost
-    - "CAACAgIAAxkBAAEluTdk-Jeq3XW1NasUbNvUyUUkQOGmnwAC3QADMNSdEY1VJRWnGm6vMAQ"
-    # chick
-    - "CAACAgIAAxkBAAEluTlk-JfHRw4ToiYB4VLz7Wf2pIFXfQACKBYAArAOoUuS9aoVZQ9R8TAE"
-  # unused
   sleep: "CAACAgIAAxkBAAEloAdk9Kt2r5lRU68g4D6bZR6EqMMgOgACtQwAAmTCSUrua9qpbBFejzAE"
-  lame: "CAACAgIAAxkBAAEloAlk9KujTfIfFvTNC5R2qn6kB6B9TQACAQIAAhZCawotBlJ7kvEiDDAE"
   angry: "CAACAgIAAxkBAAEloAtk9Ku-uNdLsdwaYN_3FrjQwqnt1wACeAsAAuEp-EnCkZE2mxUwJTAE"
+  # unused
+  lame: "CAACAgIAAxkBAAEloAlk9KujTfIfFvTNC5R2qn6kB6B9TQACAQIAAhZCawotBlJ7kvEiDDAE"
   devil: "CAACAgIAAxkBAAEloA9k9Kv06WRkAgVmw1mA8lZXCH-klAAC_wEAAhZCawpJbtHv-FIkDzAE"
   flower: "CAACAgIAAxkBAAEloBNk9Kwbx0LVF-7ZnqrGZjUv_pGgmwAC_QEAAhZCawqkr2GipuryyTAE"
   love: "CAACAgIAAxkBAAEloBVk9Kw8itM-dpLXqgw_vA7I4DfCaQACBgIAAhZCawof81Hl9_3GOzAE"
