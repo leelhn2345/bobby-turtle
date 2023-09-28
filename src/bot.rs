@@ -1,5 +1,4 @@
 use crate::handlers::owner::{OwnerGroupCommand, OwnerPrivateCommand};
-use crate::handlers::private_chat::PrivateCommand;
 use crate::handlers::system::*;
 use crate::handlers::user::{UserGroupCommand, UserPrivateCommand};
 use crate::handlers::vulgar::check_vulgar;
@@ -33,12 +32,12 @@ pub static BOT_ME: Lazy<&Me> = Lazy::new(|| BOT_DETAILS.get().unwrap());
 pub async fn setup_me(bot: &Bot) {
     let me = bot.get_me().await.expect("cannot get details about bot");
     let username = me.username.as_ref().unwrap();
-    tracing::debug!("starting {}", username);
+    tracing::debug!("starting @{}", username);
     BOT_DETAILS.set(me).unwrap();
     tracing::info!("success");
 }
 
-pub fn check_is_owner(msg: &Message) -> bool {
+pub fn check_is_owner(msg: Message) -> bool {
     msg.from()
         .map(|user| {
             let UserId(id) = user.id;
@@ -65,7 +64,7 @@ pub async fn start_bot(
         .branch(
             Update::filter_message()
                 .branch(
-                    dptree::filter(|msg: Message| msg.chat.is_group())
+                    dptree::filter(|msg: Message| msg.chat.is_chat())
                         .branch(
                             dptree::filter(check_is_owner)
                                 .filter_command::<OwnerGroupCommand>()
@@ -89,11 +88,6 @@ pub async fn start_bot(
                                 .filter_command::<UserPrivateCommand>()
                                 .endpoint(UserPrivateCommand::parse_commands),
                         ),
-                )
-                .branch(
-                    teloxide::filter_command::<PrivateCommand, _>()
-                        .filter(|msg: Message| msg.chat.is_private())
-                        .endpoint(PrivateCommand::parse_commands),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(handle_new_member))
                 .branch(Message::filter_left_chat_member().endpoint(handle_left_member))
