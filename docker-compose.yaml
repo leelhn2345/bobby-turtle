@@ -1,4 +1,4 @@
-# docker to test out production environment works in local computer
+# docker app to test if production environment works in local computer
 services:
   telebot:
     image: turtlebot

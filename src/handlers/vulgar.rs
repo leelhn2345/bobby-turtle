@@ -25,6 +25,7 @@ pub fn check_vulgar(msg: Message) -> bool {
     VULGARITIES.check(msg.text().unwrap_or_default())
 }
 
+/// sends a sticker and replies with an angry message
 #[tracing::instrument(skip_all)]
 pub async fn scold_vulgar_message(bot: Bot, msg: Message, settings: Settings) -> MyResult<()> {
     send_sticker(&bot, &msg.chat.id, settings.stickers.angry).await?;

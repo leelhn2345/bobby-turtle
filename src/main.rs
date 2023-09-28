@@ -6,7 +6,6 @@ mod settings;
 mod stickers;
 mod telemetry;
 mod types;
-mod utils;
 mod web;
 
 use bot::start_bot;
