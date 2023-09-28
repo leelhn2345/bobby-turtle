@@ -16,7 +16,6 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
 });
 
 /// this filter doesnt work on self
-#[tracing::instrument(skip_all)]
 pub fn check_vulgar(msg: Message) -> bool {
     let Some(user) = msg.from() else { return false };
 
