@@ -16,7 +16,7 @@ use teloxide::{
 pub enum PrivateCommand {
     Start,
     Help,
-    #[command(parse_with = message_to_send,description="send message anonymously 😊")]
+    #[command(parse_with = message_to_send, description="send message anonymously 😊")]
     SendMessage(i64, String),
     #[command(description = "the current date & time")]
     Now,

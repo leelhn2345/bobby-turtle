@@ -6,6 +6,7 @@ use teloxide::{payloads::SendMessageSetters, requests::Requester, types::Message
 
 use crate::bot::BOT_ME;
 use crate::{settings::Settings, stickers::send_sticker, types::MyResult};
+
 static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
     let custom_words: Vec<&str> = vec!["knn", "ccb", "wtf", "wtfbbq", "omfg", "kpkb"];
 
