@@ -15,7 +15,7 @@ static VULGARITIES: Lazy<Censor> = Lazy::new(|| {
     Standard + Zealous + Custom(set) - "hell"
 });
 
-/// this filter doesnt work on self
+/// this filter doesnt work on self and on owners
 pub fn check_vulgar(msg: Message) -> bool {
     let Some(user) = msg.from() else { return false };
 
