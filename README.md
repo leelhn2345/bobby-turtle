@@ -10,27 +10,13 @@ Use `/help` in chat.
 
 ## Local development
 
-### requisite
-
-Webhooks are used in this bot. So we need a reverse proxy.
-
-Use either [`ngrok`](https://ngrok.com/) or
-[`localtunnel`](https://github.com/localtunnel/localtunnel) to set the
-`base_url` in `config/local.yaml`
-
-the default port is 3000.
+you'll need a reverse proxy, such as ngrok.
 
 ```sh
-# if use ngrok
 ngrok http 3000
 ```
 
-```sh
-# if use localtunnel
-# this is what i use
-# go search `npm local tunnel`
-lt --port 3000 --subdomain bobby
-# beware
-# max listener error occurs quite fun
-# so may have to restart command
-```
+copy paste the url into `.env` , key = `APP_APPLICATION__PUBLIC_URL`.
+
+The reverse proxy URL changes everytime you use ngrok command, so you will need
+to change the url everytime.

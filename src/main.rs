@@ -1,5 +1,6 @@
 mod bot;
 mod handlers;
+mod jobs;
 mod routes;
 mod settings;
 mod stickers;
