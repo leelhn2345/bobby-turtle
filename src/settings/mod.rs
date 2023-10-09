@@ -17,7 +17,8 @@ pub struct Settings {
     // pub database: DatabaseSettings,
 }
 
-pub fn get_settings(env: &Environment) -> Result<Settings, ConfigError> {
+pub fn get_settings() -> Result<Settings, ConfigError> {
+    let env = get_environment();
     let base_path = std::env::current_dir().expect("failed to determine current directory");
     let config_directory = base_path.join("config");
 

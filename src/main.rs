@@ -7,8 +7,8 @@ use turtle_bot::{
 #[tokio::main]
 async fn main() {
     let env = get_environment();
-    let settings = get_settings(&env).expect("failed to read settings");
-    init_tracing(&env, "turtle_bot=info".into());
+    let settings = get_settings().expect("failed to read settings");
+    init_tracing("turtle_bot=info".into());
 
     tracing::info!("starting app~");
 
