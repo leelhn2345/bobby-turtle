@@ -2,7 +2,7 @@
 
 a virtual turtle pet on telegram.
 
-This bot is **still in active development**.
+This bot is under **active development**.
 
 ## Usage
 
