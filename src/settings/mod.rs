@@ -1,5 +1,6 @@
 mod app;
 pub mod environment;
+pub mod stickers;
 pub mod telemetry;
 
 use app::AppSettings;

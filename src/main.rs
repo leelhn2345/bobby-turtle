@@ -10,5 +10,5 @@ async fn main() {
     let env = get_environment();
     init_tracing(&env);
     let settings = get_settings(&env).expect("failed to parse settings");
-    start_app(settings).await;
+    start_app(settings, &env).await;
 }

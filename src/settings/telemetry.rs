@@ -6,8 +6,12 @@ use crate::settings::environment::Environment;
 
 pub fn init_tracing(env: &Environment) {
     let env_level = match *env {
-        Environment::Local => LevelFilter::DEBUG.into(),
-        Environment::Production => LevelFilter::INFO.into(),
+        Environment::Local => format!("telebot={}", LevelFilter::DEBUG)
+            .parse()
+            .expect("unable to set tracing level for local runtime"),
+        Environment::Production => format!("telebot={}", LevelFilter::INFO)
+            .parse()
+            .expect("unable to set tracing level for production runtime"),
     };
 
     let env_layer = EnvFilter::from_default_env().add_directive(env_level);

@@ -1,4 +1,5 @@
 /// possible runtime environment for application
+#[derive(PartialEq)]
 pub enum Environment {
     Local,
     Production,
@@ -16,7 +17,10 @@ impl TryFrom<String> for Environment {
     type Error = String;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str().trim() {
-            "local" => Ok(Self::Local),
+            "local" => {
+                dotenvy::dotenv().expect("`.env` not found");
+                Ok(Self::Local)
+            }
             "production" => Ok(Self::Production),
             unknown => Err(format!(
                 "{unknown} is not a supportedf environment. use either `local` or `production`"
