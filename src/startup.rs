@@ -15,7 +15,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{
     bot::bot_handler,
     routes::health_check,
-    settings::{environment::Environment, stickers::Stickers, Settings},
+    settings::{environment::Environment, utility::Utility, Settings},
 };
 
 #[utoipa_auto_discovery(paths = "
@@ -80,11 +80,11 @@ pub async fn start_app(settings: Settings, env: &Environment) {
 }
 
 pub async fn start_bot(bot: Bot, listener: impl UpdateListener<Err = Infallible>) {
-    let stickers = Stickers::build().expect("error deserializing stickers yaml");
+    let util = Utility::new().expect("error deserializing yaml for utility");
     let handler = bot_handler();
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![stickers])
+        .dependencies(dptree::deps![util])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())

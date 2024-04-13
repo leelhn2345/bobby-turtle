@@ -2,6 +2,7 @@ mod app;
 pub mod environment;
 pub mod stickers;
 pub mod telemetry;
+pub mod utility;
 
 use app::AppSettings;
 use config::ConfigError;
