@@ -13,6 +13,9 @@ teloxide = { version = "0.12.2", features = [
   "webhooks-axum",
 ] }
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+utoipa = { version = "4.2.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "6.0.0", features = ["axum"] }
+utoipa_auto_discovery = "0.3.0"
 
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
