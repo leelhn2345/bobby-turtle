@@ -1,8 +1,10 @@
+/// possible runtime environment for application
 pub enum Environment {
     Local,
     Production,
 }
 
+#[must_use]
 pub fn get_environment() -> Environment {
     std::env::var("APP_ENVIRONMENT")
         .unwrap_or("local".into())
@@ -24,6 +26,7 @@ impl TryFrom<String> for Environment {
 }
 
 impl Environment {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Environment::Local => "local",
