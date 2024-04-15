@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use axum::routing::get;
+use axum::{body::Body, http::Request, routing::get};
 use teloxide::{
     dispatching::Dispatcher,
     dptree,
@@ -8,6 +8,9 @@ use teloxide::{
     update_listeners::{webhooks, UpdateListener},
     Bot,
 };
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+
 use utoipa::OpenApi;
 use utoipa_auto_discovery::utoipa_auto_discovery;
 use utoipa_swagger_ui::SwaggerUi;
@@ -51,10 +54,23 @@ pub async fn start_server(
         .await
         .expect("unable to get listener");
 
+    let trace_layer = ServiceBuilder::new().layer(TraceLayer::new_for_http().make_span_with(
+        |request: &Request<Body>| {
+            let req_id = uuid::Uuid::new_v4();
+            tracing::info_span!(
+                "request",
+                method = tracing::field::display(request.method()),
+                uri = tracing::field::display(request.uri()),
+                req_id = tracing::field::display(req_id)
+            )
+        },
+    ));
+
     let app = router
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
         .route("/", get(health_check::root))
-        .route("/health_check", get(health_check::health_check));
+        .route("/health_check", get(health_check::health_check))
+        .layer(trace_layer);
 
     let stop_token = listener.stop_token();
 

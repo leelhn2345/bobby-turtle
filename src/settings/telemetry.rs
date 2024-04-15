@@ -5,16 +5,24 @@ use tracing_subscriber::{fmt, layer::SubscriberExt};
 use crate::settings::environment::Environment;
 
 pub fn init_tracing(env: &Environment) {
-    let env_level = match *env {
-        Environment::Local => format!("telebot={}", LevelFilter::DEBUG)
-            .parse()
-            .expect("unable to set tracing level for local runtime"),
-        Environment::Production => format!("telebot={}", LevelFilter::INFO)
-            .parse()
-            .expect("unable to set tracing level for production runtime"),
+    let env_layer = match *env {
+        Environment::Local => EnvFilter::from_default_env()
+            .add_directive(
+                format!("telebot={}", LevelFilter::DEBUG)
+                    .parse()
+                    .expect("unable to set telebot tracing for local runtime"),
+            )
+            .add_directive(
+                format!("tower_http={}", LevelFilter::DEBUG)
+                    .parse()
+                    .expect("unable to set axum tracing middleware for local runtime"),
+            ),
+        Environment::Production => EnvFilter::from_default_env().add_directive(
+            format!("telebot={}", LevelFilter::INFO)
+                .parse()
+                .expect("unable to set telebot tracing for production runtime"),
+        ),
     };
-
-    let env_layer = EnvFilter::from_default_env().add_directive(env_level);
 
     let format_layer = fmt::layer().without_time().with_target(false);
 
