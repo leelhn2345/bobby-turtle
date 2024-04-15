@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 
+use anyhow::Context;
 use axum::{body::Body, http::Request, routing::get};
 use teloxide::{
     dispatching::Dispatcher,
@@ -38,10 +39,17 @@ pub async fn start_server(
         settings.application.host, settings.application.port
     )
     .parse()
+    .with_context(|| {
+        format!(
+            "{}:{}",
+            settings.application.host, settings.application.port,
+        )
+    })
     .expect("unable to parse into address url");
 
     let url = format!("{}/webhook", settings.application.public_url)
         .parse()
+        .context(settings.application.public_url.to_string())
         .expect("unable to parse into webhook url");
 
     let mut options = webhooks::Options::new(address, url);
