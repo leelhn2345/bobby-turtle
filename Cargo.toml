@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.82"
+async-openai = "0.20.0"
 axum = "0.6.20"
 config = "0.14.0"
 dotenvy = "0.15.7"
@@ -30,3 +31,6 @@ uuid = { version = "1.8.0", features = ["v4"] }
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 strip = true
+
+[dev-dependencies]
+serde_json = "1.0.115"

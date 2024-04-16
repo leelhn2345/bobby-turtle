@@ -19,7 +19,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{
     bot::bot_handler,
     routes::health_check,
-    settings::{environment::Environment, utility::Utility, Settings},
+    settings::{environment::Environment, stickers::Stickers, Settings},
 };
 
 #[utoipa_auto_discovery(paths = "
@@ -90,13 +90,10 @@ pub async fn start_server(
             .map_err(|_| stop_token.stop())
             .expect("axum server error");
     });
+
     listener
 }
 
-#[tracing::instrument(
-    name = "starting app"
-    skip_all
-)]
 pub async fn start_app(settings: Settings, env: &Environment) {
     let tele_bot = Bot::from_env();
     let listener = start_server(tele_bot.clone(), &settings, env).await;
@@ -104,11 +101,11 @@ pub async fn start_app(settings: Settings, env: &Environment) {
 }
 
 pub async fn start_bot(bot: Bot, listener: impl UpdateListener<Err = Infallible>) {
-    let util = Utility::new().expect("error deserializing yaml for utility");
+    let stickers = Stickers::new().expect("error deserializing yaml for stickers");
     let handler = bot_handler();
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![util])
+        .dependencies(dptree::deps![stickers])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())
