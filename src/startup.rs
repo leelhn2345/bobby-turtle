@@ -1,7 +1,8 @@
 use std::convert::Infallible;
 
 use anyhow::Context;
-use axum::{body::Body, http::Request, routing::get};
+use async_openai::{config::OpenAIConfig, Client};
+
 use teloxide::{
     dispatching::Dispatcher,
     dptree,
@@ -9,25 +10,12 @@ use teloxide::{
     update_listeners::{webhooks, UpdateListener},
     Bot,
 };
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-
-use utoipa::OpenApi;
-use utoipa_auto_discovery::utoipa_auto_discovery;
-use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     bot::bot_handler,
-    routes::health_check,
+    routes::app_router,
     settings::{environment::Environment, stickers::Stickers, Settings},
 };
-
-#[utoipa_auto_discovery(paths = "
-    ( health_check => ./src/routes/health_check.rs );
-")]
-#[derive(OpenApi)]
-#[openapi()]
-struct ApiDoc;
 
 pub async fn start_server(
     bot: Bot,
@@ -62,23 +50,7 @@ pub async fn start_server(
         .await
         .expect("unable to get listener");
 
-    let trace_layer = ServiceBuilder::new().layer(TraceLayer::new_for_http().make_span_with(
-        |request: &Request<Body>| {
-            let req_id = uuid::Uuid::new_v4();
-            tracing::info_span!(
-                "request",
-                method = tracing::field::display(request.method()),
-                uri = tracing::field::display(request.uri()),
-                req_id = tracing::field::display(req_id)
-            )
-        },
-    ));
-
-    let app = router
-        .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
-        .route("/", get(health_check::root))
-        .route("/health_check", get(health_check::health_check))
-        .layer(trace_layer);
+    let app = app_router(router);
 
     let stop_token = listener.stop_token();
 
@@ -96,16 +68,22 @@ pub async fn start_server(
 
 pub async fn start_app(settings: Settings, env: &Environment) {
     let tele_bot = Bot::from_env();
+    let stickers = Stickers::new().expect("error deserializing yaml for stickers");
+    let chatgpt = Client::new();
     let listener = start_server(tele_bot.clone(), &settings, env).await;
-    start_bot(tele_bot, listener).await;
+    start_bot(tele_bot, listener, stickers, chatgpt).await;
 }
 
-pub async fn start_bot(bot: Bot, listener: impl UpdateListener<Err = Infallible>) {
-    let stickers = Stickers::new().expect("error deserializing yaml for stickers");
+pub async fn start_bot(
+    bot: Bot,
+    listener: impl UpdateListener<Err = Infallible>,
+    stickers: Stickers,
+    chatgpt: Client<OpenAIConfig>,
+) {
     let handler = bot_handler();
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![stickers])
+        .dependencies(dptree::deps![stickers, chatgpt])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())

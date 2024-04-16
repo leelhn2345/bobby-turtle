@@ -4,6 +4,7 @@
 #![allow(clippy::missing_panics_doc)]
 
 mod bot;
+mod chat;
 mod jobs;
 mod routes;
 pub mod settings;
