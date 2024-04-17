@@ -1,0 +1,3 @@
+# using <https://taplo.tamasfe.dev/> as toml formatter
+[formatting]
+array_auto_expand = false # `saecki/crates.nvim` can't parse multiline features array
