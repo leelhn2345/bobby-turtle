@@ -10,9 +10,9 @@ anyhow = "1.0.82"
 async-openai = "0.20.0"
 axum = "0.6.20"
 chrono = "0.4.38"
-config = "0.14.0"
 dotenvy = "0.15.7"
-serde = "1.0.197"
+figment = { version = "0.10.17", features = ["yaml", "env"] }
+serde = { version = "1.0.197", features = ["derive"] }
 teloxide = { version = "0.12.2", features = [
   "macros",
   "webhooks",
