@@ -1,0 +1,29 @@
+# to simulate production runtime on localhost
+services:
+  telebot:
+    image: telebot_image
+    container_name: telebot_container
+    depends_on:
+      - database
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5000:5000
+    env_file:
+      - .env
+
+  database:
+    image: postgres:latest
+    container_name: postgres_db_telebot
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=telebot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data_stg:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_stg:
