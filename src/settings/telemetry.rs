@@ -35,3 +35,27 @@ pub fn init_tracing(env: &Environment) {
     let env_name = &env.as_str();
     tracing::info!("telebot app started in {env_name} environment!");
 }
+
+#[cfg(test)]
+mod test {
+
+    #[derive(Debug, thiserror::Error)]
+    enum TestError {
+        #[error("effwgrgw")]
+        HelloError(String),
+    }
+
+    fn hello() -> Result<(), TestError> {
+        Err(TestError::HelloError("evfefe2f".to_string()))
+    }
+    #[test]
+    fn error() {
+        match hello() {
+            Ok(v) => println!("hello"),
+            Err(e) => println!("{e}"),
+        }
+        hello().map_err(|e| println!("{e}"));
+        hello().expect("csddc");
+        // hello().unwrap();
+    }
+}

@@ -1,4 +1,7 @@
-use std::convert::Infallible;
+use std::{
+    convert::Infallible,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Context;
 use async_openai::{config::OpenAIConfig, Client};
@@ -10,6 +13,7 @@ use teloxide::{
     update_listeners::{webhooks, UpdateListener},
     Bot,
 };
+use tokio_cron_scheduler::JobScheduler;
 
 use crate::{
     bot::bot_handler,
