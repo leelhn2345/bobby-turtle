@@ -1,3 +1,6 @@
+#![allow(clippy::unused_async)]
+#![allow(dead_code)]
+
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 
 #[derive(thiserror::Error, Debug)]
