@@ -1,4 +1,5 @@
 use async_openai::{config::OpenAIConfig, Client};
+use chrono::Local;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
@@ -22,7 +23,7 @@ pub enum Command {
     Help,
     #[command(description = "chat with me!")]
     Chat(String),
-    #[command(description = "current datetime.")]
+    #[command(description = "current datetime (GMT +8).")]
     DateTime,
     #[command(description = "feed me.")]
     Feed,
@@ -44,8 +45,8 @@ pub async fn answer(
                 .await?
         }
         Command::DateTime => {
-            send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
-            bot.send_message(chat_id, "~ feature coming soon ~").await?
+            let now = Local::now().format("%v\n%r").to_string();
+            bot.send_message(chat_id, now).await?
         }
         Command::Chat(chat_msg) => match chatgpt_chat(chatgpt, &msg, chat_msg).await {
             Ok(response) => {
