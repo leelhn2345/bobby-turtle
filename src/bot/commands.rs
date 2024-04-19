@@ -5,7 +5,7 @@ use teloxide::{requests::Requester, types::Message, utils::command::BotCommands,
 
 use crate::{chat::bot_chat, settings::stickers::Stickers};
 
-use super::{room::ChatRoom, send_sticker};
+use super::{chatroom::ChatRoom, send_sticker};
 
 #[derive(BotCommands, Clone)]
 #[command(

@@ -1,6 +1,6 @@
+mod chatroom;
 mod commands;
 mod member;
-mod room;
 
 use std::sync::OnceLock;
 

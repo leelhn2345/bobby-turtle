@@ -10,7 +10,7 @@ use teloxide::{
 
 use crate::{bot::send_sticker, settings::stickers::Stickers};
 
-use super::{room::ChatRoom, BOT_ME};
+use super::{chatroom::ChatRoom, BOT_ME};
 
 #[tracing::instrument(name = "bot got added", skip_all)]
 pub fn i_got_added(msg: Message) -> bool {
