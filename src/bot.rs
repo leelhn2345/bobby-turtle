@@ -14,6 +14,9 @@ use teloxide::{
 
 use crate::chat::user_chat;
 
+use self::member::got_added;
+
+/// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
 
 pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
@@ -22,14 +25,15 @@ pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> an
     Ok(())
 }
 
-fn is_group_chat(msg: &Message) -> bool {
+#[allow(clippy::needless_pass_by_value)]
+fn is_group_chat(msg: Message) -> bool {
     if msg.chat.is_private() || msg.chat.is_channel() {
         return false;
     }
     true
 }
 
-fn is_not_group_chat(msg: &Message) -> bool {
+fn is_not_group_chat(msg: Message) -> bool {
     !is_group_chat(msg)
 }
 
@@ -48,7 +52,11 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                         .filter_command::<commands::UserCommand>()
                         .endpoint(commands::UserCommand::answer),
                 )
-                .branch(Message::filter_new_chat_members().endpoint(member::handle_member_join))
+                .branch(
+                    Message::filter_new_chat_members()
+                        .branch(dptree::filter(got_added).endpoint(member::handle_me_join))
+                        .branch(dptree::endpoint(member::handle_member_join)),
+                )
                 .branch(Message::filter_left_chat_member().endpoint(member::handle_member_leave))
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat)),
         )
