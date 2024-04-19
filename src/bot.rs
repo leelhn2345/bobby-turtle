@@ -1,5 +1,6 @@
 mod commands;
 mod member;
+mod room;
 
 use std::sync::OnceLock;
 
@@ -14,7 +15,7 @@ use teloxide::{
 
 use crate::chat::user_chat;
 
-use self::member::{i_got_added, not_me_who_got_removed};
+use self::member::{handle_me_left, i_got_added, i_got_removed};
 
 /// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
@@ -59,8 +60,8 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 )
                 .branch(
                     Message::filter_left_chat_member()
-                        .filter(not_me_who_got_removed)
-                        .endpoint(member::handle_member_leave),
+                        .branch(dptree::filter(i_got_removed).endpoint(handle_me_left))
+                        .branch(dptree::endpoint(member::handle_member_leave)),
                 )
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat)),
         )

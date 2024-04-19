@@ -1,5 +1,7 @@
 use anyhow::{Ok, Result};
 
+use chrono::{DateTime, Utc};
+use sqlx::PgPool;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
@@ -9,7 +11,7 @@ use teloxide::{
 
 use crate::{bot::send_sticker, settings::stickers::Stickers};
 
-use super::BOT_ME;
+use super::{room::ChatRoom, BOT_ME};
 
 #[tracing::instrument(name = "bot got added", skip_all)]
 pub fn i_got_added(msg: Message) -> bool {
@@ -24,25 +26,40 @@ pub fn i_got_added(msg: Message) -> bool {
     }
 }
 
-#[tracing::instrument(name = "other people got removed", skip_all)]
-pub fn not_me_who_got_removed(msg: Message) -> bool {
+#[tracing::instrument(name = "bot got removed", skip_all)]
+pub fn i_got_removed(msg: Message) -> bool {
     let old_user = msg.left_chat_member();
-    let Some(user) = old_user else { return true };
+    let Some(user) = old_user else { return false };
 
     if user.id == BOT_ME.get().unwrap().id {
         tracing::debug!("i got removed");
-        false
-    } else {
         true
+    } else {
+        false
     }
 }
 
 #[tracing::instrument(name = "im joining", skip_all)]
-pub async fn handle_me_join(bot: Bot, msg: Message, stickers: Stickers) -> Result<()> {
+pub async fn handle_me_join(
+    bot: Bot,
+    msg: Message,
+    pool: PgPool,
+    stickers: Stickers,
+) -> Result<()> {
+    let chat_room = ChatRoom::new(&msg);
+    chat_room.save(&pool).await.map_err(|e| {
+        tracing::error!("{e:#?}");
+        e
+    })?;
     let bot_name = &BOT_ME.get().unwrap().first_name;
     let greet = format!("Hello everyone!! I'm {bot_name}!");
     send_sticker(&bot, &msg.chat.id, stickers.hello).await?;
     bot.send_message(msg.chat.id, greet).await?;
+    Ok(())
+}
+
+#[tracing::instrument(name = "i left", skip_all)]
+pub async fn handle_me_left(_bot: Bot, _msg: Message, _pool: PgPool) -> Result<()> {
     Ok(())
 }
 
