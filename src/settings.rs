@@ -1,9 +1,11 @@
 mod app;
+pub mod database;
 pub mod environment;
 pub mod stickers;
 pub mod telemetry;
 
 use app::AppSettings;
+use database::DatabaseSettings;
 use figment::{
     providers::{Env, Format, Yaml},
     Figment,
@@ -15,6 +17,7 @@ use crate::settings::environment::Environment;
 #[derive(Deserialize, Debug)]
 pub struct Settings {
     pub application: AppSettings,
+    pub database: DatabaseSettings,
 }
 
 pub fn get_settings(env: &Environment) -> Result<Settings, figment::Error> {

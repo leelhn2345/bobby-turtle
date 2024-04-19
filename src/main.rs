@@ -11,5 +11,5 @@ async fn main() {
     let settings = get_settings(&env).expect("failed to parse settings");
     init_tracing(&env);
     tracing::debug!("{:#?}", settings);
-    start_app(settings, &env).await;
+    Box::pin(start_app(settings, env)).await;
 }

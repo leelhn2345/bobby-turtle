@@ -1,26 +1,30 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, time::Duration};
 
 use anyhow::Context;
 use async_openai::{config::OpenAIConfig, Client};
 
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use teloxide::{
     dispatching::Dispatcher,
     dptree,
     error_handlers::LoggingErrorHandler,
+    requests::Requester,
     update_listeners::{webhooks, UpdateListener},
     Bot,
 };
 
 use crate::{
-    bot::bot_handler,
+    bot::{bot_handler, BOT_ME},
     routes::app_router,
-    settings::{environment::Environment, stickers::Stickers, Settings},
+    settings::{
+        database::DatabaseSettings, environment::Environment, stickers::Stickers, Settings,
+    },
 };
 
-pub async fn start_server(
+async fn start_server(
     bot: Bot,
     settings: &Settings,
-    env: &Environment,
+    env: Environment,
 ) -> impl UpdateListener<Err = std::convert::Infallible> {
     let address = format!(
         "{}:{}",
@@ -42,7 +46,7 @@ pub async fn start_server(
 
     let mut options = webhooks::Options::new(address, url);
 
-    if *env == Environment::Local {
+    if env == Environment::Local {
         options = options.drop_pending_updates();
     }
 
@@ -66,24 +70,42 @@ pub async fn start_server(
     listener
 }
 
-pub async fn start_app(settings: Settings, env: &Environment) {
+fn get_connection_pool(config: &DatabaseSettings) -> PgPool {
+    PgPoolOptions::new()
+        .acquire_timeout(Duration::from_secs(2))
+        .connect_lazy_with(config.with_db())
+}
+
+pub async fn start_app(settings: Settings, env: Environment) {
     let tele_bot = Bot::from_env();
     let stickers = Stickers::new().expect("error deserializing yaml for stickers");
     let chatgpt = Client::new();
+    let connection_pool = get_connection_pool(&settings.database);
+
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("error running sql migrations");
+
     let listener = start_server(tele_bot.clone(), &settings, env).await;
-    start_bot(tele_bot, listener, stickers, chatgpt).await;
+    start_bot(tele_bot, listener, stickers, chatgpt, connection_pool).await;
 }
 
-pub async fn start_bot(
+async fn start_bot(
     bot: Bot,
     listener: impl UpdateListener<Err = Infallible>,
     stickers: Stickers,
     chatgpt: Client<OpenAIConfig>,
+    pool: PgPool,
 ) {
+    let me = bot.get_me().await.expect("cannot get details about bot");
+    BOT_ME.set(me).unwrap();
+    tracing::debug!("{BOT_ME:#?}");
+
     let handler = bot_handler();
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![stickers, chatgpt])
+        .dependencies(dptree::deps![stickers, chatgpt, pool])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())

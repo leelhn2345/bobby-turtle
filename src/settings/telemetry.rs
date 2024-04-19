@@ -51,10 +51,10 @@ mod test {
     #[test]
     fn error() {
         match hello() {
-            Ok(v) => println!("hello"),
+            Ok(_v) => println!("hello"),
             Err(e) => println!("{e}"),
         }
-        hello().map_err(|e| println!("{e}"));
+        let _ = hello().map_err(|e| println!("{e}"));
         hello().expect("csddc");
         // hello().unwrap();
     }

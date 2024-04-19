@@ -7,7 +7,12 @@ use async_openai::{
     },
     Client,
 };
-use teloxide::types::Message;
+use teloxide::{
+    payloads::SendMessageSetters,
+    requests::Requester,
+    types::{Message, ParseMode},
+    Bot, RequestError,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChatError {
@@ -25,6 +30,48 @@ pub enum ChatError {
 
     #[error("no chat message provided by user.")]
     EmptyMessageFromUser(&'static str),
+
+    #[error(transparent)]
+    RequestError(#[from] RequestError),
+}
+
+#[tracing::instrument(name = "user chatting with bot", skip_all)]
+pub async fn user_chat(bot: Bot, client: Client<OpenAIConfig>, msg: Message) -> anyhow::Result<()> {
+    if let Some(x) = msg.text() {
+        let chat_msg = x.to_string();
+        bot_chat(bot, client, &msg, chat_msg).await?;
+    }
+    Ok(())
+}
+
+#[tracing::instrument(name = "bot chatting", skip_all)]
+#[allow(deprecated)]
+pub async fn bot_chat(
+    bot: Bot,
+    client: Client<OpenAIConfig>,
+    msg: &Message,
+    chat_msg: String,
+) -> Result<Message, ChatError> {
+    let chat_response = match chatgpt_chat(client, msg, chat_msg).await {
+        Ok(response) => {
+            bot.send_message(msg.chat.id, response)
+                .parse_mode(ParseMode::Markdown)
+                .reply_to_message_id(msg.id)
+                .await?
+        }
+        Err(e) => {
+            if let ChatError::EmptyMessageFromUser(empty_msg_response) = e {
+                bot.send_message(msg.chat.id, empty_msg_response)
+                    .parse_mode(ParseMode::Markdown)
+                    .reply_to_message_id(msg.id)
+                    .await?
+            } else {
+                tracing::error!("{:#?}", e);
+                return Err(e);
+            }
+        }
+    };
+    Ok(chat_response)
 }
 
 #[tracing::instrument(name = "chatgpt's chat completion", skip_all)]
@@ -71,10 +118,13 @@ pub async fn chatgpt_chat(
         .build()?
         .into();
 
+    let mut chat_cmp_msg = vec![sys_msg];
+    chat_cmp_msg.push(chat_req);
+
     let request = CreateChatCompletionRequestArgs::default()
         .max_tokens(128_u16)
         .model("gpt-3.5-turbo")
-        .messages([sys_msg, chat_req])
+        .messages(chat_cmp_msg)
         .build()?;
 
     let response = client.chat().create(request).await?;

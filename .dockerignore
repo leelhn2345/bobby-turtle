@@ -1,0 +1,9 @@
+.git*
+.cargo
+migrations/
+target/
+.dockerignore
+.env
+Dockerfile
+docker-compose.yaml
+spec.yaml
