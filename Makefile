@@ -1,5 +1,7 @@
 dev:
 	docker compose up database --detach --wait
+	sleep 1
+	sqlx database setup
 
 down:
 	docker compose down

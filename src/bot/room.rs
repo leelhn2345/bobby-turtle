@@ -8,8 +8,11 @@ pub enum ChatRoomError {
     #[error(transparent)]
     SqlxError(#[from] sqlx::Error),
 
-    #[error("no data obtained from database.")]
-    NoData,
+    #[error("unexpected output from database.")]
+    UnexpectedOutput,
+
+    #[error("no record(s) found")]
+    NoRecordFound,
 
     #[error(transparent)]
     UnknownError(#[from] anyhow::Error),
@@ -17,17 +20,14 @@ pub enum ChatRoomError {
 
 pub struct ChatRoom {
     id: i64,
-    title: String,
+    title: Option<String>,
     joined_at: DateTime<Utc>,
     is_group: bool,
     left_at: Option<DateTime<Utc>>,
 }
 impl ChatRoom {
     pub fn new(msg: &Message) -> Self {
-        let chat_title = match msg.chat.title() {
-            Some(x) => x.to_string(),
-            None => "undefined".to_string(),
-        };
+        let chat_title = msg.chat.title().map(std::borrow::ToOwned::to_owned);
 
         let is_group = Self::is_group_chat(msg);
 
@@ -45,14 +45,14 @@ impl ChatRoom {
     }
 
     async fn check_if_exists(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
+        chat_id: i64,
     ) -> Result<bool, ChatRoomError> {
         let exists = sqlx::query_scalar!(
             "
             SELECT EXISTS(SELECT 1 FROM chatrooms where id = $1)
             ",
-            self.id
+            chat_id
         )
         .fetch_one(&mut **tx)
         .await?;
@@ -64,8 +64,38 @@ impl ChatRoom {
                 Ok(false)
             }
         } else {
-            Err(ChatRoomError::NoData)
+            Err(ChatRoomError::UnexpectedOutput)
         }
+    }
+
+    pub async fn leave(pool: &PgPool, chat_id: i64) -> Result<(), ChatRoomError> {
+        let mut tx = pool
+            .begin()
+            .await
+            .context("failed to acquire a postgres connection from pool.")?;
+        let exists = Self::check_if_exists(&mut tx, chat_id)
+            .await
+            .context("failed to check if chat id exists in database")?;
+
+        if exists {
+            sqlx::query!(
+                r#"
+                 UPDATE chatrooms
+                 SET left_at = $1
+                 WHERE id = $2
+                 "#,
+                Utc::now(),
+                chat_id,
+            )
+            .execute(&mut *tx)
+            .await?;
+        } else {
+            return Err(ChatRoomError::NoRecordFound);
+        };
+        tx.commit()
+            .await
+            .context("failed to commit sql transaction to store new chatroom.")?;
+        Ok(())
     }
 
     /// for saving/update new chat room data in database.
@@ -75,27 +105,11 @@ impl ChatRoom {
             .await
             .context("failed to acquire a postgres connection from pool.")?;
 
-        let exists = self
-            .check_if_exists(&mut tx)
+        let exists = Self::check_if_exists(&mut tx, self.id)
             .await
             .context("failed to check if chat id exists in database")?;
 
-        if exists {
-            sqlx::query!(
-                "UPDATE chatrooms 
-                SET title = $1,
-                joined_counter = joined_counter + 1,
-                joined_at = $2,
-                left_at = $3
-                WHERE id = $4",
-                self.title,
-                self.joined_at,
-                self.left_at,
-                self.id
-            )
-            .execute(&mut *tx)
-            .await?;
-        } else {
+        if !exists {
             sqlx::query!(
                 "
                 INSERT INTO chatrooms
@@ -107,6 +121,21 @@ impl ChatRoom {
                 self.is_group,
                 self.joined_at,
                 self.left_at
+            )
+            .execute(&mut *tx)
+            .await?;
+        } else if self.is_group && exists {
+            sqlx::query!(
+                "UPDATE chatrooms 
+                SET title = $1,
+                joined_counter = joined_counter + 1,
+                joined_at = $2,
+                left_at = $3
+                WHERE id = $4",
+                self.title,
+                self.joined_at,
+                self.left_at,
+                self.id
             )
             .execute(&mut *tx)
             .await?;

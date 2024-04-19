@@ -1,6 +1,5 @@
 use anyhow::{Ok, Result};
 
-use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use teloxide::{
     payloads::SendMessageSetters,
@@ -59,7 +58,12 @@ pub async fn handle_me_join(
 }
 
 #[tracing::instrument(name = "i left", skip_all)]
-pub async fn handle_me_left(_bot: Bot, _msg: Message, _pool: PgPool) -> Result<()> {
+pub async fn handle_me_left(msg: Message, pool: PgPool) -> Result<()> {
+    ChatRoom::leave(&pool, msg.chat.id.0).await.map_err(|e| {
+        tracing::error!("{e:#?}");
+        e
+    })?;
+
     Ok(())
 }
 

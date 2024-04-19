@@ -1,10 +1,11 @@
 use async_openai::{config::OpenAIConfig, Client};
 use chrono::Local;
+use sqlx::PgPool;
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
 use crate::{chat::bot_chat, settings::stickers::Stickers};
 
-use super::send_sticker;
+use super::{room::ChatRoom, send_sticker};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -64,9 +65,13 @@ impl UserCommand {
         msg: Message,
         cmd: UserCommand,
         stickers: Stickers,
+        pool: PgPool,
     ) -> anyhow::Result<()> {
         match cmd {
             UserCommand::Start => {
+                let chat_room = ChatRoom::new(&msg);
+                chat_room.save(&pool).await?;
+
                 let username = msg.chat.username();
                 let text = if let Some(name) = username {
                     format!("Hello @{name}! 🐢")
