@@ -1,6 +1,5 @@
 use anyhow::{Ok, Result};
-use chrono::Local;
-use sqlx::{PgPool, QueryBuilder};
+
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
@@ -49,12 +48,7 @@ pub async fn handle_me_join(bot: Bot, msg: Message, stickers: Stickers) -> Resul
 
 #[tracing::instrument(name = "new member", skip_all)]
 #[allow(clippy::cast_possible_wrap)]
-pub async fn handle_member_join(
-    bot: Bot,
-    msg: Message,
-    pool: PgPool,
-    stickers: Stickers,
-) -> Result<()> {
+pub async fn handle_member_join(bot: Bot, msg: Message, stickers: Stickers) -> Result<()> {
     let new_users: Option<Vec<User>> = msg
         .new_chat_members()
         .map(std::borrow::ToOwned::to_owned)
@@ -69,27 +63,6 @@ pub async fn handle_member_join(
     if users.is_empty() {
         return Ok(());
     };
-
-    let mut query_builder = QueryBuilder::new(
-        "INSERT INTO users 
-            (id, first_name, last_name, username, role, joined_at)",
-    );
-
-    query_builder.push_values(&users, |mut b, user| {
-        b.push_bind(user.id.0 as i64)
-            .push_bind(user.first_name.to_string())
-            .push_bind(user.last_name.clone())
-            .push_bind(user.username.clone())
-            .push_bind("test subject")
-            .push_bind(Local::now());
-    });
-
-    let query = query_builder.build();
-
-    query.execute(&pool).await.map_err(|e| {
-        tracing::error!("{:#?}", e);
-        e
-    })?;
 
     for user in users {
         tokio::task::spawn({
