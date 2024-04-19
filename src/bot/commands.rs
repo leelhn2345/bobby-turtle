@@ -1,16 +1,8 @@
 use async_openai::{config::OpenAIConfig, Client};
 use chrono::Local;
-use teloxide::{
-    requests::Requester,
-    types::{Message},
-    utils::command::BotCommands,
-    Bot,
-};
+use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
-use crate::{
-    chat::{bot_chat},
-    settings::stickers::Stickers,
-};
+use crate::{chat::bot_chat, settings::stickers::Stickers};
 
 use super::send_sticker;
 

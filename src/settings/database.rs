@@ -13,7 +13,8 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
-    #[must_use] pub fn without_db(&self) -> PgConnectOptions {
+    #[must_use]
+    pub fn without_db(&self) -> PgConnectOptions {
         let ssl_mode = if self.require_ssl {
             PgSslMode::Require
         } else {
@@ -28,7 +29,8 @@ impl DatabaseSettings {
             .ssl_mode(ssl_mode)
     }
 
-    #[must_use] pub fn with_db(&self) -> PgConnectOptions {
+    #[must_use]
+    pub fn with_db(&self) -> PgConnectOptions {
         self.without_db().database(&self.database_name)
     }
 }
