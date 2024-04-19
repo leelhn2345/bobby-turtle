@@ -57,8 +57,8 @@ pub async fn handle_me_join(
     Ok(())
 }
 
-#[tracing::instrument(name = "i left", skip_all)]
-pub async fn handle_me_left(msg: Message, pool: PgPool) -> Result<()> {
+#[tracing::instrument(name = "i leave", skip_all)]
+pub async fn handle_me_leave(msg: Message, pool: PgPool) -> Result<()> {
     ChatRoom::leave(&pool, msg.chat.id.0).await.map_err(|e| {
         tracing::error!("{e:#?}");
         e

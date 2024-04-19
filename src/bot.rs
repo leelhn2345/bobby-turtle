@@ -15,7 +15,10 @@ use teloxide::{
 
 use crate::chat::user_chat;
 
-use self::member::{handle_me_left, i_got_added, i_got_removed};
+use self::{
+    chatroom::ChatRoom,
+    member::{handle_me_leave, i_got_added, i_got_removed},
+};
 
 /// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
@@ -36,6 +39,11 @@ fn is_group_chat(msg: Message) -> bool {
 
 fn is_not_group_chat(msg: Message) -> bool {
     !is_group_chat(msg)
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn group_title_change(msg: Message) -> bool {
+    msg.new_chat_title().is_some()
 }
 
 pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDescription> {
@@ -60,9 +68,10 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 )
                 .branch(
                     Message::filter_left_chat_member()
-                        .branch(dptree::filter(i_got_removed).endpoint(handle_me_left))
+                        .branch(dptree::filter(i_got_removed).endpoint(handle_me_leave))
                         .branch(dptree::endpoint(member::handle_member_leave)),
                 )
+                .branch(dptree::filter(group_title_change).endpoint(ChatRoom::update_title))
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat)),
         )
 }

@@ -11,8 +11,11 @@ pub enum ChatRoomError {
     #[error("unexpected output from database.")]
     UnexpectedOutput,
 
-    #[error("no record(s) found")]
+    #[error("no record(s) found.")]
     NoRecordFound,
+
+    #[error("chat title did not update.")]
+    ChatTitleDidNotUpdate,
 
     #[error(transparent)]
     UnknownError(#[from] anyhow::Error),
@@ -95,6 +98,25 @@ impl ChatRoom {
         tx.commit()
             .await
             .context("failed to commit sql transaction to store new chatroom.")?;
+        Ok(())
+    }
+
+    pub async fn update_title(pool: PgPool, msg: Message) -> anyhow::Result<()> {
+        let Some(chat_title) = msg.new_chat_title() else {
+            return Err(ChatRoomError::ChatTitleDidNotUpdate.into());
+        };
+
+        sqlx::query!(
+            "
+             UPDATE chatrooms
+             SET title = $1
+             WHERE id = $2
+             ",
+            chat_title.to_string(),
+            msg.chat.id.0
+        )
+        .execute(&pool)
+        .await?;
         Ok(())
     }
 
