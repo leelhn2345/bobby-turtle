@@ -1,17 +1,10 @@
 use async_openai::{config::OpenAIConfig, Client};
 use chrono::Local;
-use teloxide::{
-    payloads::SendMessageSetters,
-    requests::Requester,
-    types::{ChatId, InputFile, Message, ParseMode},
-    utils::command::BotCommands,
-    Bot,
-};
+use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
-use crate::{
-    chat::{chatgpt_chat, ChatError},
-    settings::stickers::Stickers,
-};
+use crate::{chat::bot_chat, settings::stickers::Stickers};
+
+use super::send_sticker;
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -28,55 +21,62 @@ pub enum Command {
     #[command(description = "feed me.")]
     Feed,
 }
-
-#[tracing::instrument(name = "answer commands", skip_all)]
-#[allow(deprecated)]
-pub async fn answer(
-    bot: Bot,
-    msg: Message,
-    cmd: Command,
-    stickers: Stickers,
-    chatgpt: Client<OpenAIConfig>,
-) -> anyhow::Result<()> {
-    let chat_id = msg.chat.id;
-    match cmd {
-        Command::Help => {
-            bot.send_message(chat_id, Command::descriptions().to_string())
-                .await?
-        }
-        Command::DateTime => {
-            let now = Local::now().format("%v\n%r").to_string();
-            bot.send_message(chat_id, now).await?
-        }
-        Command::Chat(chat_msg) => match chatgpt_chat(chatgpt, &msg, chat_msg).await {
-            Ok(response) => {
-                bot.send_message(chat_id, response)
-                    .parse_mode(ParseMode::Markdown)
-                    .reply_to_message_id(msg.id)
+impl Command {
+    #[tracing::instrument(name = "answer commands", skip_all)]
+    #[allow(deprecated)]
+    pub async fn answer(
+        bot: Bot,
+        msg: Message,
+        cmd: Command,
+        stickers: Stickers,
+        chatgpt: Client<OpenAIConfig>,
+    ) -> anyhow::Result<()> {
+        let chat_id = msg.chat.id;
+        match cmd {
+            Command::Help => {
+                bot.send_message(chat_id, Command::descriptions().to_string())
                     .await?
             }
-            Err(e) => {
-                if let ChatError::EmptyMessageFromUser(empty_msg_response) = e {
-                    bot.send_message(chat_id, empty_msg_response)
-                        .parse_mode(ParseMode::Markdown)
-                        .reply_to_message_id(msg.id)
-                        .await?
-                } else {
-                    tracing::error!("{:#?}", e);
-                    return Err(e.into());
-                }
+            Command::DateTime => {
+                let now = Local::now().format("%v\n%r").to_string();
+                bot.send_message(chat_id, now).await?
             }
-        },
-        Command::Feed => {
-            send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
-            bot.send_message(chat_id, "~ feature coming soon ~").await?
-        }
-    };
-    Ok(())
+            Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg).await?,
+            Command::Feed => {
+                send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
+                bot.send_message(chat_id, "~ feature coming soon ~").await?
+            }
+        };
+        Ok(())
+    }
 }
 
-pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
-    bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))
-        .await?;
-    Ok(())
+#[derive(BotCommands, Clone)]
+#[command(rename_rule = "lowercase")]
+pub enum UserCommand {
+    #[command()]
+    Start,
+}
+
+impl UserCommand {
+    pub async fn answer(
+        bot: Bot,
+        msg: Message,
+        cmd: UserCommand,
+        stickers: Stickers,
+    ) -> anyhow::Result<()> {
+        match cmd {
+            UserCommand::Start => {
+                let username = msg.chat.username();
+                let text = if let Some(name) = username {
+                    format!("Hello @{name}! 🐢")
+                } else {
+                    "Hello friend! 🐢".to_string()
+                };
+                send_sticker(&bot, &msg.chat.id, stickers.hello).await?;
+                bot.send_message(msg.chat.id, text).await?;
+            }
+        }
+        Ok(())
+    }
 }

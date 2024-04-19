@@ -8,8 +8,8 @@ use telebot::startup::start_app;
 #[tokio::main]
 async fn main() {
     let env = get_environment();
-    init_tracing(&env);
     let settings = get_settings(&env).expect("failed to parse settings");
+    init_tracing(&env);
     tracing::debug!("{:#?}", settings);
-    start_app(settings, &env).await;
+    Box::pin(start_app(settings, env)).await;
 }

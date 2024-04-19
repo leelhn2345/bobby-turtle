@@ -1,12 +1,37 @@
 mod commands;
 mod member;
 
+use std::sync::OnceLock;
+
 use anyhow::Result;
 use teloxide::{
     dispatching::{DpHandlerDescription, HandlerExt, MessageFilterExt, UpdateFilterExt},
     dptree::{self, di::DependencyMap, Handler},
-    types::{Message, Update},
+    requests::Requester,
+    types::{ChatId, InputFile, Me, Message, Update},
+    Bot,
 };
+
+use crate::chat::user_chat;
+
+pub static BOT_ME: OnceLock<Me> = OnceLock::new();
+
+pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
+    bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))
+        .await?;
+    Ok(())
+}
+
+fn is_group_chat(msg: &Message) -> bool {
+    if msg.chat.is_private() || msg.chat.is_channel() {
+        return false;
+    }
+    true
+}
+
+fn is_not_group_chat(msg: &Message) -> bool {
+    !is_group_chat(msg)
+}
 
 pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDescription> {
     dptree::entry()
@@ -16,9 +41,15 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .branch(
                     dptree::entry()
                         .filter_command::<commands::Command>()
-                        .endpoint(commands::answer),
+                        .endpoint(commands::Command::answer),
+                )
+                .branch(
+                    dptree::filter(is_not_group_chat)
+                        .filter_command::<commands::UserCommand>()
+                        .endpoint(commands::UserCommand::answer),
                 )
                 .branch(Message::filter_new_chat_members().endpoint(member::handle_member_join))
-                .branch(Message::filter_left_chat_member().endpoint(member::handle_member_leave)),
+                .branch(Message::filter_left_chat_member().endpoint(member::handle_member_leave))
+                .branch(dptree::filter(is_not_group_chat).endpoint(user_chat)),
         )
 }

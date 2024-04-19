@@ -12,12 +12,9 @@ axum = "0.6.20"
 chrono = "0.4.38"
 dotenvy = "0.15.7"
 figment = { version = "0.10.17", features = ["yaml", "env"] }
+secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.197", features = ["derive"] }
-teloxide = { version = "0.12.2", features = [
-  "macros",
-  "webhooks",
-  "webhooks-axum",
-] }
+teloxide = { version = "0.12.2", features = ["macros", "webhooks", "webhooks-axum"] }
 thiserror = "1.0.58"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 tokio-cron-scheduler = { version = "0.10.0", features = ["signal"] }
@@ -30,9 +27,17 @@ utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 utoipa_auto_discovery = "0.3.0"
 uuid = { version = "1.8.0", features = ["v4"] }
 
+[dependencies.sqlx]
+version = "0.7.4"
+default-features = false
+features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros", "migrate"]
+
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 strip = true
 
 [dev-dependencies]
-serde_json = "1.0.115"
+serde_json = "1.0.116"
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
