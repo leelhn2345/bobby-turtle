@@ -98,8 +98,10 @@ async fn start_bot(
     chatgpt: Client<OpenAIConfig>,
     pool: PgPool,
 ) {
-    let me = bot.get_me().await.expect("cannot get details about bot");
-    BOT_ME.set(me).unwrap();
+    let me = bot.get_me().await.expect("cannot get details about bot.");
+    BOT_ME
+        .set(me)
+        .expect("error setting bot details to static value.");
     tracing::debug!("{BOT_ME:#?}");
 
     let handler = bot_handler();

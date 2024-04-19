@@ -14,7 +14,7 @@ use teloxide::{
 
 use crate::chat::user_chat;
 
-use self::member::got_added;
+use self::member::{i_got_added, not_me_who_got_removed};
 
 /// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
@@ -54,10 +54,14 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 )
                 .branch(
                     Message::filter_new_chat_members()
-                        .branch(dptree::filter(got_added).endpoint(member::handle_me_join))
+                        .branch(dptree::filter(i_got_added).endpoint(member::handle_me_join))
                         .branch(dptree::endpoint(member::handle_member_join)),
                 )
-                .branch(Message::filter_left_chat_member().endpoint(member::handle_member_leave))
+                .branch(
+                    Message::filter_left_chat_member()
+                        .filter(not_me_who_got_removed)
+                        .endpoint(member::handle_member_leave),
+                )
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat)),
         )
 }

@@ -1,5 +1,5 @@
 use anyhow::{Ok, Result};
-use chrono::Utc;
+use chrono::Local;
 use sqlx::{PgPool, QueryBuilder};
 use teloxide::{
     payloads::SendMessageSetters,
@@ -13,7 +13,7 @@ use crate::{bot::send_sticker, settings::stickers::Stickers};
 use super::BOT_ME;
 
 #[tracing::instrument(name = "bot got added", skip_all)]
-pub fn got_added(msg: Message) -> bool {
+pub fn i_got_added(msg: Message) -> bool {
     let new_user = msg.new_chat_members();
     let Some(user) = new_user else { return false };
 
@@ -22,6 +22,19 @@ pub fn got_added(msg: Message) -> bool {
         true
     } else {
         false
+    }
+}
+
+#[tracing::instrument(name = "other people got removed", skip_all)]
+pub fn not_me_who_got_removed(msg: Message) -> bool {
+    let old_user = msg.left_chat_member();
+    let Some(user) = old_user else { return true };
+
+    if user.id == BOT_ME.get().unwrap().id {
+        tracing::debug!("i got removed");
+        false
+    } else {
+        true
     }
 }
 
@@ -68,7 +81,7 @@ pub async fn handle_member_join(
             .push_bind(user.last_name.clone())
             .push_bind(user.username.clone())
             .push_bind("test subject")
-            .push_bind(Utc::now());
+            .push_bind(Local::now());
     });
 
     let query = query_builder.build();
