@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chatrooms \n                SET title = $1,\n                joined_counter = joined_counter + 1,\n                joined_at = $2,\n                left_at = $3\n                WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "27f1fe23f932895e3b261f29a13bd62bd118200630b5a6bd803eab60dc8990b1"
+}

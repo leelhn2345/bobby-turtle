@@ -62,3 +62,11 @@ to build app without communicating with database:
 cargo sqlx prepare
 # or run `make prep`
 ```
+
+## Production
+
+To migrate production database:
+
+```sh
+DATABASE_URL=<connection_string> sqlx migrate run
+```

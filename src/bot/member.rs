@@ -1,6 +1,6 @@
 use anyhow::{Ok, Result};
-use chrono::Utc;
-use sqlx::{PgPool, QueryBuilder};
+
+use sqlx::PgPool;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
@@ -10,10 +10,10 @@ use teloxide::{
 
 use crate::{bot::send_sticker, settings::stickers::Stickers};
 
-use super::BOT_ME;
+use super::{chatroom::ChatRoom, BOT_ME};
 
 #[tracing::instrument(name = "bot got added", skip_all)]
-pub fn got_added(msg: Message) -> bool {
+pub fn i_got_added(msg: Message) -> bool {
     let new_user = msg.new_chat_members();
     let Some(user) = new_user else { return false };
 
@@ -25,8 +25,31 @@ pub fn got_added(msg: Message) -> bool {
     }
 }
 
+#[tracing::instrument(name = "bot got removed", skip_all)]
+pub fn i_got_removed(msg: Message) -> bool {
+    let old_user = msg.left_chat_member();
+    let Some(user) = old_user else { return false };
+
+    if user.id == BOT_ME.get().unwrap().id {
+        tracing::debug!("i got removed");
+        true
+    } else {
+        false
+    }
+}
+
 #[tracing::instrument(name = "im joining", skip_all)]
-pub async fn handle_me_join(bot: Bot, msg: Message, stickers: Stickers) -> Result<()> {
+pub async fn handle_me_join(
+    bot: Bot,
+    msg: Message,
+    pool: PgPool,
+    stickers: Stickers,
+) -> Result<()> {
+    let chat_room = ChatRoom::new(&msg);
+    chat_room.save(&pool).await.map_err(|e| {
+        tracing::error!("{e:#?}");
+        e
+    })?;
     let bot_name = &BOT_ME.get().unwrap().first_name;
     let greet = format!("Hello everyone!! I'm {bot_name}!");
     send_sticker(&bot, &msg.chat.id, stickers.hello).await?;
@@ -34,14 +57,19 @@ pub async fn handle_me_join(bot: Bot, msg: Message, stickers: Stickers) -> Resul
     Ok(())
 }
 
+#[tracing::instrument(name = "i leave", skip_all)]
+pub async fn handle_me_leave(msg: Message, pool: PgPool) -> Result<()> {
+    ChatRoom::leave(&pool, msg.chat.id.0).await.map_err(|e| {
+        tracing::error!("{e:#?}");
+        e
+    })?;
+
+    Ok(())
+}
+
 #[tracing::instrument(name = "new member", skip_all)]
 #[allow(clippy::cast_possible_wrap)]
-pub async fn handle_member_join(
-    bot: Bot,
-    msg: Message,
-    pool: PgPool,
-    stickers: Stickers,
-) -> Result<()> {
+pub async fn handle_member_join(bot: Bot, msg: Message, stickers: Stickers) -> Result<()> {
     let new_users: Option<Vec<User>> = msg
         .new_chat_members()
         .map(std::borrow::ToOwned::to_owned)
@@ -56,27 +84,6 @@ pub async fn handle_member_join(
     if users.is_empty() {
         return Ok(());
     };
-
-    let mut query_builder = QueryBuilder::new(
-        "INSERT INTO users 
-            (id, first_name, last_name, username, role, joined_at)",
-    );
-
-    query_builder.push_values(&users, |mut b, user| {
-        b.push_bind(user.id.0 as i64)
-            .push_bind(user.first_name.to_string())
-            .push_bind(user.last_name.clone())
-            .push_bind(user.username.clone())
-            .push_bind("test subject")
-            .push_bind(Utc::now());
-    });
-
-    let query = query_builder.build();
-
-    query.execute(&pool).await.map_err(|e| {
-        tracing::error!("{:#?}", e);
-        e
-    })?;
 
     for user in users {
         tokio::task::spawn({

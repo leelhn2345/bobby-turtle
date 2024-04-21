@@ -92,7 +92,7 @@ pub async fn chatgpt_chat(
         }
     };
 
-    let username_exists = match msg.from() {
+    let username = match msg.from() {
         Some(user) => match &user.username {
             Some(username) => Some(username),
             None => None,
@@ -100,10 +100,10 @@ pub async fn chatgpt_chat(
         None => None,
     };
 
-    let chat_req = match username_exists {
-        Some(username) => ChatCompletionRequestUserMessageArgs::default()
+    let chat_req = match username {
+        Some(x) => ChatCompletionRequestUserMessageArgs::default()
             .content(chat_msg)
-            .name(username)
+            .name(x)
             .build()?
             .into(),
 

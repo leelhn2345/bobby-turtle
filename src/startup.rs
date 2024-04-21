@@ -82,11 +82,6 @@ pub async fn start_app(settings: Settings, env: Environment) {
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
 
-    sqlx::migrate!("./migrations")
-        .run(&connection_pool)
-        .await
-        .expect("error running sql migrations");
-
     let listener = start_server(tele_bot.clone(), &settings, env).await;
     start_bot(tele_bot, listener, stickers, chatgpt, connection_pool).await;
 }
@@ -98,8 +93,10 @@ async fn start_bot(
     chatgpt: Client<OpenAIConfig>,
     pool: PgPool,
 ) {
-    let me = bot.get_me().await.expect("cannot get details about bot");
-    BOT_ME.set(me).unwrap();
+    let me = bot.get_me().await.expect("cannot get details about bot.");
+    BOT_ME
+        .set(me)
+        .expect("error setting bot details to static value.");
     tracing::debug!("{BOT_ME:#?}");
 
     let handler = bot_handler();

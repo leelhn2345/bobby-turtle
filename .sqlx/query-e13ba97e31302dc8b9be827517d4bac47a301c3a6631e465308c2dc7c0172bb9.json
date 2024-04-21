@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n             UPDATE chatrooms\n             SET title = $1\n             WHERE id = $2\n             ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e13ba97e31302dc8b9be827517d4bac47a301c3a6631e465308c2dc7c0172bb9"
+}
