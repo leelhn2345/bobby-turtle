@@ -1,9 +1,8 @@
 CREATE TABLE chatlogs (
-  id UUID NOT NULL,
-  PRIMARY KEY (id),
-  message_id BIGINT NOT NULL,
-  is_group BOOLEAN NOT NULL,
-  joined_counter SMALLINT DEFAULT 1,
-  joined_at timestamptz NOT NULL,
-  left_at timestamptz
+  id SERIAL PRIMARY KEY,
+  message_id BIGINT REFERENCES chatrooms (id),
+  name TEXT,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  datetime timestamptz NOT NULL
 );

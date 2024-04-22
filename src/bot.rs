@@ -1,5 +1,6 @@
 mod chatroom;
 mod commands;
+mod filters;
 mod member;
 
 use std::sync::OnceLock;
@@ -17,6 +18,7 @@ use crate::chat::user_chat;
 
 use self::{
     chatroom::ChatRoom,
+    filters::{group_title_change, is_not_group_chat, to_bot},
     member::{handle_me_leave, i_got_added, i_got_removed},
 };
 
@@ -27,23 +29,6 @@ pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> an
     bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))
         .await?;
     Ok(())
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn is_group_chat(msg: Message) -> bool {
-    if msg.chat.is_private() || msg.chat.is_channel() {
-        return false;
-    }
-    true
-}
-
-fn is_not_group_chat(msg: Message) -> bool {
-    !is_group_chat(msg)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn group_title_change(msg: Message) -> bool {
-    msg.new_chat_title().is_some()
 }
 
 pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDescription> {
@@ -72,6 +57,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                         .branch(dptree::endpoint(member::handle_member_leave)),
                 )
                 .branch(dptree::filter(group_title_change).endpoint(ChatRoom::update_title))
-                .branch(dptree::filter(is_not_group_chat).endpoint(user_chat)),
+                .branch(dptree::filter(is_not_group_chat).endpoint(user_chat))
+                .branch(dptree::filter(to_bot).endpoint(user_chat)),
         )
 }

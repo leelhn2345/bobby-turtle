@@ -31,6 +31,7 @@ impl Command {
         cmd: Command,
         stickers: Stickers,
         chatgpt: Client<OpenAIConfig>,
+        pool: PgPool,
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
@@ -42,7 +43,7 @@ impl Command {
                 let now = Local::now().format("%v\n%r").to_string();
                 bot.send_message(chat_id, now).await?
             }
-            Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg).await?,
+            Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg, pool).await?,
             Command::Feed => {
                 send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
                 bot.send_message(chat_id, "~ feature coming soon ~").await?

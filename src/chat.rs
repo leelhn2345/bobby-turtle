@@ -2,11 +2,13 @@ use async_openai::{
     config::OpenAIConfig,
     error::OpenAIError,
     types::{
-        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-        CreateChatCompletionRequestArgs,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+        ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs, Role,
     },
     Client,
 };
+use chrono::Utc;
+use sqlx::{PgPool, Postgres, Transaction};
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
@@ -33,13 +35,25 @@ pub enum ChatError {
 
     #[error(transparent)]
     RequestError(#[from] RequestError),
+
+    #[error(transparent)]
+    SqlxError(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    UnknownError(#[from] serde_json::Error),
 }
 
-#[tracing::instrument(name = "user chatting with bot", skip_all)]
-pub async fn user_chat(bot: Bot, client: Client<OpenAIConfig>, msg: Message) -> anyhow::Result<()> {
+#[tracing::instrument(skip_all)]
+pub async fn user_chat(
+    bot: Bot,
+    client: Client<OpenAIConfig>,
+    msg: Message,
+    pool: PgPool,
+) -> anyhow::Result<()> {
     if let Some(x) = msg.text() {
+        tracing::debug!("some1 is chatting with bot");
         let chat_msg = x.to_string();
-        bot_chat(bot, client, &msg, chat_msg).await?;
+        bot_chat(bot, client, &msg, chat_msg, pool).await?;
     }
     Ok(())
 }
@@ -51,8 +65,9 @@ pub async fn bot_chat(
     client: Client<OpenAIConfig>,
     msg: &Message,
     chat_msg: String,
+    pool: PgPool,
 ) -> Result<Message, ChatError> {
-    let chat_response = match chatgpt_chat(client, msg, chat_msg).await {
+    let chat_response = match chatgpt_chat(client, msg, chat_msg, pool).await {
         Ok(response) => {
             bot.send_message(msg.chat.id, response)
                 .parse_mode(ParseMode::Markdown)
@@ -79,6 +94,7 @@ pub async fn chatgpt_chat(
     client: Client<OpenAIConfig>,
     msg: &Message,
     chat_msg: String,
+    pool: PgPool,
 ) -> Result<String, ChatError> {
     if chat_msg.is_empty() {
         return Err(ChatError::EmptyMessageFromUser(
@@ -92,6 +108,8 @@ pub async fn chatgpt_chat(
         }
     };
 
+    let mut tx = pool.begin().await?;
+
     let username = match msg.from() {
         Some(user) => match &user.username {
             Some(username) => Some(username),
@@ -99,6 +117,8 @@ pub async fn chatgpt_chat(
         },
         None => None,
     };
+
+    save_logs(&mut tx, msg.chat.id.0, Role::User, &chat_msg, username).await?;
 
     let chat_req = match username {
         Some(x) => ChatCompletionRequestUserMessageArgs::default()
@@ -139,5 +159,90 @@ pub async fn chatgpt_chat(
         .ok_or(ChatError::NoContent)?
         .to_owned();
 
+    save_logs(
+        &mut tx,
+        msg.chat.id.0,
+        Role::Assistant,
+        &chat_response,
+        None,
+    )
+    .await?;
+
+    tx.commit().await?;
+
     Ok(chat_response)
+}
+async fn get_logs(
+    _tx: Transaction<'_, Postgres>,
+    _msg_id: i64,
+) -> Result<Vec<ChatCompletionRequestMessage>, ChatError> {
+    todo!()
+}
+
+#[tracing::instrument(name = "save chat logs to db", skip_all)]
+async fn save_logs(
+    tx: &mut Transaction<'_, Postgres>,
+    msg_id: i64,
+    role: Role,
+    content: &String,
+    username: Option<&String>,
+) -> Result<(), ChatError> {
+    let role_str = role.to_string();
+    sqlx::query!(
+        r#"
+        INSERT INTO chatlogs 
+        (message_id, name, role, content, datetime)
+        VALUES ($1, $2, $3, $4, $5) 
+        "#,
+        msg_id,
+        username,
+        role_str,
+        content,
+        Utc::now()
+    )
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| {
+        tracing::error!("{e:#?}");
+        e
+    })?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug)]
+    enum Abc {
+        A(A),
+        B(B),
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct A {
+        a: u8,
+    }
+    #[derive(Serialize, Deserialize, Debug)]
+    struct B {
+        b: C,
+    }
+    #[derive(Debug, Deserialize, Serialize)]
+    #[serde(untagged)]
+    enum C {
+        D(String),
+    }
+    #[test]
+    fn vec_parse() {
+        let aaa: Vec<Abc> = vec![
+            Abc::A(A { a: 9 }),
+            Abc::B(B {
+                b: C::D("fefefe".to_string()),
+            }),
+        ];
+        let fff = serde_json::to_string_pretty(&aaa).expect("cannot serialize");
+        println!("{fff:#?}");
+        let eee: Vec<Abc> = serde_json::from_str(&fff).expect("cannot deserialize");
+        println!("{eee:#?}");
+    }
 }
