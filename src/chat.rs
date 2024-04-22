@@ -1,9 +1,12 @@
+use std::sync::OnceLock;
+
 use async_openai::{
     config::OpenAIConfig,
     error::OpenAIError,
     types::{
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
-        ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs, Role,
+        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
+        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
+        CreateChatCompletionRequestArgs, Role,
     },
     Client,
 };
@@ -33,7 +36,7 @@ pub enum ChatError {
     IsBot,
 
     #[error("no chat message provided by user.")]
-    EmptyMessageFromUser(&'static str),
+    EmptyMessageFromUser(String),
 
     #[error(transparent)]
     RequestError(#[from] RequestError),
@@ -99,10 +102,20 @@ pub async fn chatgpt_chat(
     pool: PgPool,
 ) -> Result<String, ChatError> {
     if chat_msg.is_empty() {
-        return Err(ChatError::EmptyMessageFromUser(
-            "Hello! Feel free to chat with me! 😊
-            \nExample: `/chat how are you?`",
-        ));
+        static ERR_MSG: OnceLock<String> = OnceLock::new();
+        let err_msg = ERR_MSG.get_or_init(|| {
+            format!(
+                "
+Hello! Feel free to chat with me! 😊
+
+Example: `/chat how are you?`
+
+Or include my name - `{}` in your message.
+            ",
+                BOT_NAME.get().unwrap()
+            )
+        });
+        return Err(ChatError::EmptyMessageFromUser(err_msg.into()));
     }
     if let Some(user) = &msg.via_bot {
         if user.is_bot {
@@ -119,6 +132,7 @@ pub async fn chatgpt_chat(
         },
         None => None,
     };
+    let mut past_logs = get_logs(&mut tx, msg.chat.id.0).await?;
 
     save_logs(&mut tx, msg.chat.id.0, Role::User, &chat_msg, username).await?;
 
@@ -144,7 +158,9 @@ pub async fn chatgpt_chat(
         .into();
 
     let mut chat_cmp_msg = vec![sys_msg];
+    chat_cmp_msg.append(&mut past_logs);
     chat_cmp_msg.push(chat_req);
+    tracing::debug!("chat_cmp_msg is {chat_cmp_msg:#?}");
 
     let request = CreateChatCompletionRequestArgs::default()
         .max_tokens(128_u16)
@@ -177,11 +193,60 @@ pub async fn chatgpt_chat(
 
     Ok(chat_response)
 }
+struct PastMsg {
+    name: Option<String>,
+    content: String,
+    role: String,
+}
+
+#[tracing::instrument(skip_all)]
+/// The role is saved as string in database.
+/// I am matching the string to it's particular role.
+/// Approach is quite dangerous but i can't think of a safer way.
+/// It is better to match it programmatically than matching it to `&str` type.
+///
+/// If it can't parse any role, it won't be able to get previous chat messages.
+/// Function will just return an empty vector.
+/// The silver lining is that less tokens will be sent to OpenAI,
+/// resulting in lower costs.
 async fn get_logs(
-    _tx: Transaction<'_, Postgres>,
-    _msg_id: i64,
+    tx: &mut Transaction<'_, Postgres>,
+    msg_id: i64,
 ) -> Result<Vec<ChatCompletionRequestMessage>, ChatError> {
-    todo!()
+    let past_msges: Vec<PastMsg> = sqlx::query_as!(
+        PastMsg,
+        r#"
+        SELECT name, role, content FROM chatlogs
+        WHERE message_id = $1
+        AND datetime>= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+        ORDER BY datetime DESC
+        LIMIT 10
+        "#,
+        msg_id
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+    let mut past_req_msges: Vec<ChatCompletionRequestMessage> = past_msges
+        .into_iter()
+        .map(|x| match x.role.to_lowercase().as_str().trim() {
+            "user" => Ok(ChatCompletionRequestMessage::User(
+                ChatCompletionRequestUserMessageArgs::default()
+                    .name(x.name.unwrap_or_default())
+                    .content(x.content)
+                    .build()?,
+            )),
+            "assistant" => Ok(ChatCompletionRequestMessage::Assistant(
+                ChatCompletionRequestAssistantMessageArgs::default()
+                    .content(x.content)
+                    .build()?,
+            )),
+            _ => Err(OpenAIError::InvalidArgument("invalid role".to_string())),
+        })
+        .filter_map(std::result::Result::ok)
+        .collect();
+    past_req_msges.reverse();
+    tracing::debug!("{past_req_msges:#?}");
+    Ok(past_req_msges)
 }
 
 #[tracing::instrument(name = "save chat logs to db", skip_all)]
