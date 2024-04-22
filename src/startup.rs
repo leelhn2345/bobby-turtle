@@ -78,16 +78,15 @@ pub async fn start_app(settings: Settings, env: Environment) {
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
 
-    match env {
-        Environment::Production => sqlx::migrate!("./migrations")
+    if let Environment::Production = env {
+        sqlx::migrate!("./migrations")
             .run(&connection_pool)
             .await
             .map_err(|e| {
                 tracing::error!("{e:#?}");
                 e
             })
-            .expect("migration failed."),
-        _ => (),
+            .expect("migration failed.");
     };
 
     let listener = start_server(tele_bot.clone(), &settings, env).await;
