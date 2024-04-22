@@ -26,6 +26,20 @@ use self::{
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
 pub static BOT_NAME: OnceLock<String> = OnceLock::new();
 
+pub async fn init_static_bot_details(bot: &Bot) {
+    let me = bot.get_me().await.expect("cannot get details about bot.");
+    let first_name_vec: Vec<&str> = me.first_name.split_whitespace().collect();
+    let name = first_name_vec.first().unwrap().to_lowercase();
+
+    BOT_NAME
+        .set(name)
+        .expect("cannot set bot's name as static value.");
+    BOT_ME
+        .set(me)
+        .expect("error setting bot details to static value.");
+    tracing::debug!("{BOT_ME:#?}");
+}
+
 pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
     bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))
         .await?;

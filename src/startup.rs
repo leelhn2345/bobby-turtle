@@ -8,17 +8,14 @@ use teloxide::{
     dispatching::Dispatcher,
     dptree,
     error_handlers::LoggingErrorHandler,
-    requests::Requester,
     update_listeners::{webhooks, UpdateListener},
     Bot,
 };
 
 use crate::{
-    bot::{bot_handler, BOT_ME, BOT_NAME},
+    bot::{bot_handler, init_static_bot_details},
     routes::app_router,
-    settings::{
-        database::DatabaseSettings, environment::Environment, stickers::Stickers, Settings,
-    },
+    settings::{database::DatabaseSettings, environment::Environment, Settings},
 };
 
 async fn start_server(
@@ -78,37 +75,46 @@ fn get_connection_pool(config: &DatabaseSettings) -> PgPool {
 
 pub async fn start_app(settings: Settings, env: Environment) {
     let tele_bot = Bot::from_env();
-    let stickers = Stickers::new().expect("error deserializing yaml for stickers");
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
 
+    match env {
+        Environment::Production => sqlx::migrate!("./migrations")
+            .run(&connection_pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("{e:#?}");
+                e
+            })
+            .expect("migration failed."),
+        _ => (),
+    };
+
     let listener = start_server(tele_bot.clone(), &settings, env).await;
-    start_bot(tele_bot, listener, stickers, chatgpt, connection_pool).await;
+
+    Box::pin(start_bot(
+        tele_bot,
+        listener,
+        settings,
+        chatgpt,
+        connection_pool,
+    ))
+    .await;
 }
 
 async fn start_bot(
     bot: Bot,
     listener: impl UpdateListener<Err = Infallible>,
-    stickers: Stickers,
+    settings: Settings,
     chatgpt: Client<OpenAIConfig>,
     pool: PgPool,
 ) {
-    let me = bot.get_me().await.expect("cannot get details about bot.");
-    let first_name_vec: Vec<&str> = me.first_name.split_whitespace().collect();
-    let name = first_name_vec.first().unwrap().to_lowercase();
-
-    BOT_NAME
-        .set(name)
-        .expect("cannot set bot's name as static value.");
-    BOT_ME
-        .set(me)
-        .expect("error setting bot details to static value.");
-    tracing::debug!("{BOT_ME:#?}");
+    init_static_bot_details(&bot).await;
 
     let handler = bot_handler();
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![stickers, chatgpt, pool])
+        .dependencies(dptree::deps![settings.stickers, chatgpt, pool])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())
