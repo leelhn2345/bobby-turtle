@@ -1,8 +1,6 @@
-use std::sync::OnceLock;
-
 use teloxide::types::Message;
 
-use crate::bot::BOT_ME;
+use crate::bot::BOT_NAME;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn is_group_chat(msg: Message) -> bool {
@@ -28,8 +26,6 @@ pub fn group_title_change(msg: Message) -> bool {
 /// if `true`, user is chatting with bot.
 /// returns `false` by default.
 pub fn to_bot(msg: Message) -> bool {
-    static BOT_NAME: OnceLock<String> = OnceLock::new();
-
     let text = match msg.text() {
         None => return false,
         Some(x) => {
@@ -40,15 +36,7 @@ pub fn to_bot(msg: Message) -> bool {
         }
     };
 
-    let name = BOT_NAME.get_or_init(|| {
-        let first_name: Vec<&str> = BOT_ME
-            .get()
-            .unwrap()
-            .first_name
-            .split_whitespace()
-            .collect();
-        first_name.first().copied().unwrap().to_lowercase()
-    });
+    let name = BOT_NAME.get().unwrap();
 
     tracing::debug!(text);
     tracing::debug!(name);

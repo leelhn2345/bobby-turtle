@@ -24,6 +24,7 @@ use self::{
 
 /// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
+pub static BOT_NAME: OnceLock<String> = OnceLock::new();
 
 pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
     bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))

@@ -14,7 +14,7 @@ use teloxide::{
 };
 
 use crate::{
-    bot::{bot_handler, BOT_ME},
+    bot::{bot_handler, BOT_ME, BOT_NAME},
     routes::app_router,
     settings::{
         database::DatabaseSettings, environment::Environment, stickers::Stickers, Settings,
@@ -94,6 +94,12 @@ async fn start_bot(
     pool: PgPool,
 ) {
     let me = bot.get_me().await.expect("cannot get details about bot.");
+    let first_name_vec: Vec<&str> = me.first_name.split_whitespace().collect();
+    let name = first_name_vec.first().unwrap().to_lowercase();
+
+    BOT_NAME
+        .set(name)
+        .expect("cannot set bot's name as static value.");
     BOT_ME
         .set(me)
         .expect("error setting bot details to static value.");

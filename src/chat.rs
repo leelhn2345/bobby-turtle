@@ -16,6 +16,8 @@ use teloxide::{
     Bot, RequestError,
 };
 
+use crate::bot::BOT_NAME;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ChatError {
     #[error(transparent)]
@@ -134,7 +136,10 @@ pub async fn chatgpt_chat(
     };
 
     let sys_msg = ChatCompletionRequestSystemMessageArgs::default()
-        .content("You are a cute bubbly turtle.")
+        .content(format!(
+            "You are a cute bubbly turtle and your name is {}.",
+            BOT_NAME.get().unwrap()
+        ))
         .build()?
         .into();
 
