@@ -28,7 +28,10 @@ pub async fn init_scheduler(
     pool: &PgPool,
 ) -> Result<JobScheduler, CronJobError> {
     let scheduler = JobScheduler::new().await?;
-    let greeting_jobs = get_greetings(bot, stickers, pool).await?;
+    let greeting_jobs = get_greetings(bot, stickers, pool).await.map_err(|e| {
+        tracing::error!(error = %e);
+        e
+    })?;
     for job in greeting_jobs {
         tokio::spawn(add_job(scheduler.clone(), job));
     }
@@ -37,6 +40,20 @@ pub async fn init_scheduler(
     scheduler.start().await?;
     tracing::debug!("scheduler started");
     Ok(scheduler)
+}
+
+pub enum CronJobType {
+    MorningGreeting,
+    NightGreeting,
+}
+
+impl CronJobType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::MorningGreeting => "morning-greeting",
+            Self::NightGreeting => "night-greeting",
+        }
+    }
 }
 
 #[cfg(test)]

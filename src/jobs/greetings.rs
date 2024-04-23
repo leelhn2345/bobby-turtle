@@ -1,14 +1,12 @@
-use std::sync::{Arc, Mutex};
-
 use chrono_tz::Tz;
-use sqlx::{migrate::Migrate, PgPool, QueryBuilder};
+use sqlx::PgPool;
 use teloxide::{requests::Requester, types::ChatId, Bot};
 use tokio_cron_scheduler::Job;
 use uuid::Uuid;
 
 use crate::{bot::send_sticker, settings::stickers::Stickers};
 
-use super::CronJobError;
+use super::{CronJobError, CronJobType};
 
 struct Greeting {
     id: i32,
@@ -36,11 +34,23 @@ pub async fn get_greetings(
     let mut greeting_jobs: Vec<Job> = Vec::new();
     let mut metadata_jobs: Vec<JobMetadata> = Vec::new();
 
-    let mut night_jobs = night_greeting(bot, stickers, pool).await?;
+    let mut night_jobs = greeting(
+        bot,
+        &stickers.sleep,
+        pool,
+        CronJobType::NightGreeting.as_str(),
+    )
+    .await?;
     greeting_jobs.append(&mut night_jobs.job);
     metadata_jobs.append(&mut night_jobs.metadata);
 
-    let mut morning_jobs = morning_greeting(bot, stickers, pool).await?;
+    let mut morning_jobs = greeting(
+        bot,
+        &stickers.hello,
+        pool,
+        CronJobType::MorningGreeting.as_str(),
+    )
+    .await?;
     greeting_jobs.append(&mut morning_jobs.job);
     metadata_jobs.append(&mut morning_jobs.metadata);
 
@@ -76,10 +86,11 @@ async fn send_greeting(bot: Bot, msg_id: i64, msg: String, sticker: String) {
 }
 
 #[tracing::instrument(skip_all)]
-async fn morning_greeting(
+async fn greeting(
     bot: &Bot,
-    stickers: &Stickers,
+    sticker: &String,
     pool: &PgPool,
+    job_type: &str,
 ) -> Result<GreetingJob, CronJobError> {
     let mut job_vec: Vec<Job> = Vec::new();
     let mut job_metadata: Vec<JobMetadata> = Vec::new();
@@ -88,8 +99,9 @@ async fn morning_greeting(
         Greeting,
         "
         SELECT id, target, cron_str, message from jobs_cron
-        WHERE type = 'morning-greeting'
-        "
+        WHERE type = $1
+        ",
+        job_type
     )
     .fetch_all(pool)
     .await?;
@@ -103,69 +115,13 @@ async fn morning_greeting(
 
     for cron_job in jobs_in_db {
         let bot = bot.clone();
-        let stickers = stickers.to_owned();
+        let sticker = sticker.to_owned();
         let job = Job::new_async_tz(cron_job.cron_str.as_str(), Tz::Singapore, move |_, _| {
             let bot = bot.clone();
-            let sleep_sticker = stickers.hello.clone();
+            let sticker = sticker.clone();
             let msg = cron_job.message.clone();
 
-            Box::pin(send_greeting(bot, cron_job.target, msg, sleep_sticker))
-        });
-
-        match job {
-            Ok(x) => {
-                job_metadata.push(JobMetadata {
-                    id: cron_job.id,
-                    guid: x.guid(),
-                });
-                job_vec.push(x);
-            }
-
-            Err(e) => tracing::error!(error = %e),
-        }
-    }
-
-    Ok(GreetingJob {
-        job: job_vec,
-        metadata: job_metadata,
-    })
-}
-
-#[tracing::instrument(skip_all)]
-async fn night_greeting(
-    bot: &Bot,
-    stickers: &Stickers,
-    pool: &PgPool,
-) -> Result<GreetingJob, CronJobError> {
-    let mut job_vec: Vec<Job> = Vec::new();
-    let mut job_metadata: Vec<JobMetadata> = Vec::new();
-
-    let jobs_in_db: Vec<Greeting> = sqlx::query_as!(
-        Greeting,
-        "
-        SELECT id, target, cron_str, message from jobs_cron
-        WHERE type = 'night-greeting'
-        "
-    )
-    .fetch_all(pool)
-    .await?;
-
-    if jobs_in_db.is_empty() {
-        return Ok(GreetingJob {
-            job: job_vec,
-            metadata: job_metadata,
-        });
-    };
-
-    for cron_job in jobs_in_db {
-        let bot = bot.clone();
-        let stickers = stickers.to_owned();
-        let job = Job::new_async_tz(cron_job.cron_str.as_str(), Tz::Singapore, move |_, _| {
-            let bot = bot.clone();
-            let sleep_sticker = stickers.sleep.clone();
-            let msg = cron_job.message.clone();
-
-            Box::pin(send_greeting(bot, cron_job.target, msg, sleep_sticker))
+            Box::pin(send_greeting(bot, cron_job.target, msg, sticker))
         });
 
         match job {
