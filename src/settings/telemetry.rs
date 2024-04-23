@@ -32,7 +32,7 @@ pub fn init_tracing(env: &Environment) {
 
     tracing::subscriber::set_global_default(subscriber).expect("failed to set tracing subscriber");
 
-    let env_name = &env.as_str();
+    let env_name = env.as_str();
     tracing::info!("telebot app started in {env_name} environment!");
 }
 

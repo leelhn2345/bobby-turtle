@@ -1,5 +1,5 @@
 use async_openai::{config::OpenAIConfig, Client};
-use chrono::{Local, Utc};
+use chrono::Utc;
 use chrono_tz::Tz;
 use sqlx::PgPool;
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
@@ -14,13 +14,13 @@ use super::{chatroom::ChatRoom, send_sticker};
     description = "These commands are supported:"
 )]
 pub enum Command {
-    #[command()]
+    #[command(description = "See all available commands")]
     Help,
-    #[command(description = "chat with me!")]
+    #[command(description = "Chat with me!")]
     Chat(String),
-    #[command(description = "current datetime (GMT +8).")]
+    #[command(description = "Current datetime (GMT +8)")]
     DateTime,
-    #[command(description = "feed me.")]
+    #[command(description = "Feed me")]
     Feed,
 }
 impl Command {

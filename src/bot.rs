@@ -11,6 +11,7 @@ use teloxide::{
     dptree::{self, di::DependencyMap, Handler},
     requests::Requester,
     types::{ChatId, InputFile, Me, Message, Update},
+    utils::command::BotCommands,
     Bot,
 };
 
@@ -24,9 +25,14 @@ use self::{
 
 /// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
+/// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_NAME: OnceLock<String> = OnceLock::new();
 
-pub async fn init_static_bot_details(bot: &Bot) {
+pub async fn init_bot_details(bot: &Bot) {
+    bot.set_my_commands(commands::Command::bot_commands())
+        .await
+        .expect("error setting bot commands.");
+
     let me = bot.get_me().await.expect("cannot get details about bot.");
     let first_name_vec: Vec<&str> = me.first_name.split_whitespace().collect();
     let name = first_name_vec.first().unwrap().to_lowercase();
