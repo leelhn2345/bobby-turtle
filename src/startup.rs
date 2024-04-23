@@ -13,7 +13,8 @@ use teloxide::{
 };
 
 use crate::{
-    bot::{bot_handler, init_static_bot_details},
+    bot::{bot_handler, init_bot_details},
+    jobs::init_scheduler,
     routes::app_router,
     settings::{database::DatabaseSettings, environment::Environment, Settings},
 };
@@ -83,13 +84,17 @@ pub async fn start_app(settings: Settings, env: Environment) {
             .run(&connection_pool)
             .await
             .map_err(|e| {
-                tracing::error!("{e:#?}");
+                tracing::error!(error = %e);
                 e
             })
             .expect("migration failed.");
     };
 
     let listener = start_server(tele_bot.clone(), &settings, env).await;
+
+    init_scheduler(&tele_bot, &settings.stickers, &connection_pool)
+        .await
+        .expect("cannot initialize scheduler");
 
     Box::pin(start_bot(
         tele_bot,
@@ -108,7 +113,7 @@ async fn start_bot(
     chatgpt: Client<OpenAIConfig>,
     pool: PgPool,
 ) {
-    init_static_bot_details(&bot).await;
+    init_bot_details(&bot).await;
 
     let handler = bot_handler();
 

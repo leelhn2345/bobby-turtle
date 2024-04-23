@@ -1,5 +1,5 @@
 /// possible runtime environment for application
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Environment {
     Local,
     Production,

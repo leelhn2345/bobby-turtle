@@ -21,6 +21,9 @@ use teloxide::{
 
 use crate::bot::BOT_NAME;
 
+const MAX_TOKENS: u16 = 512;
+const MODEL: &str = "gpt-3.5-turbo";
+
 #[derive(thiserror::Error, Debug)]
 pub enum ChatError {
     #[error(transparent)]
@@ -86,7 +89,7 @@ pub async fn bot_chat(
                     .reply_to_message_id(msg.id)
                     .await?
             } else {
-                tracing::error!("{:#?}", e);
+                tracing::error!(error = %e);
                 return Err(e);
             }
         }
@@ -163,8 +166,8 @@ Or include my name - `{}` in your message.
     tracing::debug!("chat_cmp_msg is {chat_cmp_msg:#?}");
 
     let request = CreateChatCompletionRequestArgs::default()
-        .max_tokens(128_u16)
-        .model("gpt-3.5-turbo")
+        .max_tokens(MAX_TOKENS)
+        .model(MODEL)
         .messages(chat_cmp_msg)
         .build()?;
 
@@ -199,7 +202,6 @@ struct PastMsg {
     role: String,
 }
 
-#[tracing::instrument(skip_all)]
 /// The role is saved as string in database.
 /// I am matching the string to it's particular role.
 /// Approach is quite dangerous but i can't think of a safer way.
@@ -209,6 +211,7 @@ struct PastMsg {
 /// Function will just return an empty vector.
 /// The silver lining is that less tokens will be sent to OpenAI,
 /// resulting in lower costs.
+#[tracing::instrument(skip_all)]
 async fn get_logs(
     tx: &mut Transaction<'_, Postgres>,
     msg_id: i64,
@@ -273,7 +276,7 @@ async fn save_logs(
     .execute(&mut **tx)
     .await
     .map_err(|e| {
-        tracing::error!("{e:#?}");
+        tracing::error!(error = %e);
         e
     })?;
     Ok(())
