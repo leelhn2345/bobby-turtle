@@ -4,7 +4,7 @@ CREATE TABLE jobs_cron (
   job_id UUID UNIQUE,
   type TEXT NOT NULL, -- 'morning-greeting', `night-greeting`, `wish`, etc...
   cron_str TEXT NOT NULL,
-  message TEXT NOT NULL,
+  message TEXT NOT NULL
 );
 
 CREATE TABLE jobs_one_off (
