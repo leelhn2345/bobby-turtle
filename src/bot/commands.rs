@@ -1,5 +1,6 @@
 use async_openai::{config::OpenAIConfig, Client};
-use chrono::Local;
+use chrono::{Local, Utc};
+use chrono_tz::Tz;
 use sqlx::PgPool;
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
@@ -40,7 +41,10 @@ impl Command {
                     .await?
             }
             Command::DateTime => {
-                let now = Local::now().format("%v\n%r").to_string();
+                let now = Utc::now()
+                    .with_timezone(&Tz::Singapore)
+                    .format("%v\n%r")
+                    .to_string();
                 bot.send_message(chat_id, now).await?
             }
             Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg, pool).await?,
@@ -84,5 +88,23 @@ impl UserCommand {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use chrono_tz::Tz;
+
+    #[test]
+    fn timezone() {
+        let timezone = Tz::America__Chicago;
+
+        // Get the current date and time in the specified location
+        let wow = Utc::now().with_timezone(&timezone);
+        // .format("%v\n%r")
+        // .to_string();
+
+        println!("{wow}");
     }
 }
