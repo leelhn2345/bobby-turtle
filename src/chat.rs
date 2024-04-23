@@ -89,7 +89,7 @@ pub async fn bot_chat(
                     .reply_to_message_id(msg.id)
                     .await?
             } else {
-                tracing::error!("{:#?}", e);
+                tracing::error!(error = %e);
                 return Err(e);
             }
         }
@@ -276,7 +276,7 @@ async fn save_logs(
     .execute(&mut **tx)
     .await
     .map_err(|e| {
-        tracing::error!("{e:#?}");
+        tracing::error!(error = %e);
         e
     })?;
     Ok(())

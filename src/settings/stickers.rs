@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+/// The stickers used in this app.
 #[derive(Deserialize, Debug, Clone)]
 pub struct Stickers {
     pub kiss: String,

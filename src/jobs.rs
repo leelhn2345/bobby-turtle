@@ -1,18 +1,24 @@
-use std::sync::Arc;
-
-use chrono_tz::Tz;
+mod greetings;
 use sqlx::PgPool;
-use teloxide::{requests::Requester, types::ChatId, Bot};
+use teloxide::Bot;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 
-use crate::settings::stickers::Stickers;
+use crate::{jobs::greetings::get_greetings, settings::stickers::Stickers};
 
 #[derive(thiserror::Error, Debug)]
 pub enum CronJobError {
     #[error(transparent)]
     CronScheduler(#[from] JobSchedulerError),
-    // #[error(transparent)]
-    // CronJob(#[from] ),
+
+    #[error(transparent)]
+    SqlxError(#[from] sqlx::Error),
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn add_job(scheduler: JobScheduler, job: Job) {
+    if let Err(e) = scheduler.add(job).await {
+        tracing::error!(error = %e);
+    }
 }
 
 #[tracing::instrument(skip_all)]
@@ -22,39 +28,15 @@ pub async fn init_scheduler(
     pool: &PgPool,
 ) -> Result<JobScheduler, CronJobError> {
     let scheduler = JobScheduler::new().await?;
-    let night_job = night_greeting(bot, 220_272_763)?;
-    scheduler.add(night_job).await?;
-
-    // let morning_job = morning_greeting(&bot, 220_272_763)?;
-    // scheduler.add(morning_job).await?;
+    let greeting_jobs = get_greetings(bot, stickers, pool).await?;
+    for job in greeting_jobs {
+        tokio::spawn(add_job(scheduler.clone(), job));
+    }
 
     scheduler.shutdown_on_ctrl_c();
     scheduler.start().await?;
     tracing::debug!("scheduler started");
     Ok(scheduler)
-}
-fn morning_greeting(bot: &Bot, chat_id: i64) -> Result<Job, CronJobError> {
-    todo!()
-}
-
-#[tracing::instrument(skip_all)]
-fn night_greeting(bot: &Bot, chat_id: i64) -> Result<Job, CronJobError> {
-    tracing::debug!("night greeting");
-    let bot = bot.clone();
-    let job = Job::new_async_tz("*/5  * * * * *", Tz::Singapore, move |_, _| {
-        let bot = bot.clone();
-        Box::pin(async move {
-            if let Err(e) = bot.send_message(ChatId(chat_id), "Fefef").await {
-                tracing::error!("{e:#?}");
-            }
-        })
-    })?;
-
-    Ok(job)
-}
-
-async fn weather_check() {
-    todo!()
 }
 
 #[cfg(test)]
@@ -68,7 +50,6 @@ mod test {
 
     // Needs multi_thread to test, otherwise it hangs on scheduler.add()
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    // #[tokio::test]
     async fn test_schedule() {
         let subscriber = FmtSubscriber::builder()
             .with_max_level(Level::TRACE)

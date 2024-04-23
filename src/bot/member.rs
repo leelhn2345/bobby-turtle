@@ -47,7 +47,7 @@ pub async fn handle_me_join(
 ) -> Result<()> {
     let chat_room = ChatRoom::new(&msg);
     chat_room.save(&pool).await.map_err(|e| {
-        tracing::error!("{e:#?}");
+        tracing::error!(error = %e);
         e
     })?;
     let bot_name = &BOT_ME.get().unwrap().first_name;
@@ -60,7 +60,7 @@ pub async fn handle_me_join(
 #[tracing::instrument(name = "i leave", skip_all)]
 pub async fn handle_me_leave(msg: Message, pool: PgPool) -> Result<()> {
     ChatRoom::leave(&pool, msg.chat.id.0).await.map_err(|e| {
-        tracing::error!("{e:#?}");
+        tracing::error!(error = %e);
         e
     })?;
 
@@ -86,7 +86,7 @@ pub async fn handle_member_join(bot: Bot, msg: Message, stickers: Stickers) -> R
     };
 
     for user in users {
-        tokio::task::spawn({
+        tokio::spawn({
             let bot = bot.clone();
             async move {
                 let text = if let Some(x) = user.username {
