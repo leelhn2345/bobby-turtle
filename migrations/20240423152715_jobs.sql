@@ -13,5 +13,6 @@ CREATE TABLE jobs_one_off (
   job_id UUID UNIQUE,
   type TEXT NOT NULL, -- `reminder`, `task`, etc...
   due TEXT NOT NULL,
+  completed BOOLEAN NOT NULL,
   message TEXT NOT NULL
 )

@@ -10,6 +10,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - 5000:5000
+    environment:
+      # these env values are runtime values when app is deployed on cloud.
+      # have to set them up when simulating app in production runtime.
+      - APP_DATABASE__USERNAME=postgres
+      - APP_DATABASE__PASSWORD=password
+      - APP_DATABASE__HOST=database
+      - APP_DATABASE__PORT=5432
+      - APP_DATABASE__REQUIRE_SSL=false # remove this env when in actual prod environment.
     env_file:
       - .env
 

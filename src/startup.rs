@@ -46,6 +46,10 @@ async fn start_server(
 
     if env == Environment::Local {
         options = options.drop_pending_updates();
+        tracing::info!(
+            "app started in http://localhost:{}",
+            settings.application.port
+        );
     }
 
     let (mut listener, stop_flag, router) = webhooks::axum_to_router(bot, options)
@@ -78,17 +82,6 @@ pub async fn start_app(settings: Settings, env: Environment) {
     let tele_bot = Bot::from_env();
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
-
-    if let Environment::Production = env {
-        sqlx::migrate!("./migrations")
-            .run(&connection_pool)
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e);
-                e
-            })
-            .expect("migration failed.");
-    };
 
     let listener = start_server(tele_bot.clone(), &settings, env).await;
 

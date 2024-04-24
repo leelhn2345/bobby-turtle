@@ -1,6 +1,6 @@
 mod chatroom;
 mod commands;
-mod filters;
+mod handlers;
 mod member;
 
 use std::sync::OnceLock;
@@ -19,7 +19,7 @@ use crate::chat::user_chat;
 
 use self::{
     chatroom::ChatRoom,
-    filters::{group_title_change, is_not_group_chat, to_bot},
+    handlers::{group_title_change, is_not_group_chat, to_bot},
     member::{handle_me_leave, i_got_added, i_got_removed},
 };
 
