@@ -13,7 +13,8 @@
 
 A virtual turtle pet on telegram.
 
-This bot is under **active development**.
+> [!WARNING]
+> This bot is under **active development**.
 
 ## Features
 
