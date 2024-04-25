@@ -1,3 +1,6 @@
+//! # Bot Dispatch Handlers
+//!
+//! This mod contains functions for filtering in the dptree dispatch handler.
 use teloxide::types::Message;
 
 use crate::bot::BOT_NAME;

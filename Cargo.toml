@@ -32,7 +32,7 @@ uuid = { version = "1.8.0", features = ["v4"] }
 [dependencies.sqlx]
 version = "0.7.4"
 default-features = false
-features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros", "migrate"]
+features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros"]
 
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).

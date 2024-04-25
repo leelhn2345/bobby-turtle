@@ -29,23 +29,30 @@ async fn start_server(
         settings.application.host, settings.application.port
     )
     .parse()
-    .with_context(|| {
-        format!(
-            "{}:{}",
-            settings.application.host, settings.application.port,
-        )
-    })
+    .context(format!(
+        "{}:{}",
+        settings.application.host, settings.application.port,
+    ))
     .expect("unable to parse into address url");
+
+    tracing::info!("{address:#?}");
 
     let url = format!("{}/webhook", settings.application.public_url)
         .parse()
         .context(settings.application.public_url.to_string())
         .expect("unable to parse into webhook url");
 
+    tracing::info!("{url:#?}");
+
     let mut options = webhooks::Options::new(address, url);
+    tracing::info!("{bot:#?}");
 
     if env == Environment::Local {
         options = options.drop_pending_updates();
+        tracing::info!(
+            "app started in http://localhost:{}",
+            settings.application.port
+        );
     }
 
     let (mut listener, stop_flag, router) = webhooks::axum_to_router(bot, options)
@@ -78,17 +85,6 @@ pub async fn start_app(settings: Settings, env: Environment) {
     let tele_bot = Bot::from_env();
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
-
-    if let Environment::Production = env {
-        sqlx::migrate!("./migrations")
-            .run(&connection_pool)
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e);
-                e
-            })
-            .expect("migration failed.");
-    };
 
     let listener = start_server(tele_bot.clone(), &settings, env).await;
 

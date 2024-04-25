@@ -1,8 +1,20 @@
 # Telegram Bot
 
-a virtual turtle pet on telegram.
+<!--toc:start-->
+- [Telegram Bot](#telegram-bot)
+  - [Features](#features)
+  - [Usage](#usage)
+  - [Local Development](#local-development)
+    - [Requirements](#requirements)
+    - [Setup](#setup)
+    - [Build](#build)
+  - [Production](#production)
+<!--toc:end-->
 
-This bot is under **active development**.
+A virtual turtle pet on telegram.
+
+> [!WARNING]
+> This bot is under **active development**.
 
 ## Features
 
@@ -14,6 +26,8 @@ This bot is under **active development**.
 Use `/help` in chat.
 
 ## Local Development
+
+Go to `http://<address>/<port>/docs` for app's Swagger UI.
 
 ### Requirements
 

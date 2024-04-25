@@ -17,7 +17,7 @@ pub enum CronJobError {
 #[tracing::instrument(skip_all)]
 pub async fn add_job(scheduler: JobScheduler, job: Job) {
     if let Err(e) = scheduler.add(job).await {
-        tracing::error!(error = %e);
+        tracing::error!(%e);
     }
 }
 
