@@ -27,6 +27,9 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 COPY config config
 COPY --from=builder /app/target/release/telebot telebot
+
 ENV APP_ENVIRONMENT=production
+EXPOSE 5000
+
 ENTRYPOINT ["./telebot"]
 
