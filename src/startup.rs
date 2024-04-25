@@ -57,6 +57,7 @@ async fn start_server(
 
     let (mut listener, stop_flag, router) = webhooks::axum_to_router(bot, options)
         .await
+        .map_err(|e| tracing::error!("{e:#?}"))
         .expect("unable to get listener");
 
     let app = app_router(router);
