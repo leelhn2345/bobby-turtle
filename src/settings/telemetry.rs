@@ -24,7 +24,11 @@ pub fn init_tracing(env: &Environment) {
         ),
     };
 
-    let format_layer = fmt::layer().without_time().with_target(false);
+    let format_layer = fmt::layer()
+        .without_time()
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(false);
 
     let subscriber = tracing_subscriber::registry()
         .with(env_layer)
