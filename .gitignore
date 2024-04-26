@@ -2,3 +2,4 @@
 .env
 .vscode
 spec.yaml
+fly.toml

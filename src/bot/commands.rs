@@ -1,12 +1,11 @@
-use async_openai::{config::OpenAIConfig, Client};
 use chrono::Utc;
 use chrono_tz::Tz;
 use sqlx::PgPool;
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
-use crate::{chat::bot_chat, settings::stickers::Stickers};
+use crate::settings::stickers::Stickers;
 
-use super::{chatroom::ChatRoom, send_sticker};
+use super::{chatroom::ChatRoom, send_sticker, BotDialogue, ChatState};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -17,7 +16,9 @@ pub enum Command {
     #[command(description = "See all available commands")]
     Help,
     #[command(description = "Chat with me!")]
-    Chat(String),
+    Chat,
+    #[command(description = "Make me shutup")]
+    Shutup,
     #[command(description = "Current datetime (GMT +8)")]
     DateTime,
     #[command(description = "Feed me")]
@@ -31,8 +32,7 @@ impl Command {
         msg: Message,
         cmd: Command,
         stickers: Stickers,
-        chatgpt: Client<OpenAIConfig>,
-        pool: PgPool,
+        dialogue: BotDialogue,
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
@@ -47,7 +47,19 @@ impl Command {
                     .to_string();
                 bot.send_message(chat_id, now).await?
             }
-            Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg, pool).await?,
+            Self::Chat => {
+                dialogue.update(ChatState::Talk).await?;
+                send_sticker(&bot, &chat_id, stickers.hello).await?;
+                bot.send_message(chat_id, "Yo yo yo, what do you wanna chat about?? 😊")
+                    .await?
+            }
+            Self::Shutup => {
+                dialogue.update(ChatState::Shutup).await?;
+                send_sticker(&bot, &chat_id, stickers.whatever).await?;
+                bot.send_message(chat_id, "Huh?! Whatever 🙄. Byebye I'm off.")
+                    .await?
+            }
+            // Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg, pool).await?,
             Command::Feed => {
                 send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
                 bot.send_message(chat_id, "~ feature coming soon ~").await?

@@ -7,3 +7,4 @@ target/
 Dockerfile
 docker-compose.yaml
 spec.yaml
+fly.toml

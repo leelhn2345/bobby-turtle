@@ -16,4 +16,5 @@ pub struct Stickers {
     pub flower: String,
     pub love: String,
     pub laugh: String,
+    pub whatever: String,
 }
