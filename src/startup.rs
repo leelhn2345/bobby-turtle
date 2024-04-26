@@ -5,7 +5,7 @@ use async_openai::{config::OpenAIConfig, Client};
 
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use teloxide::{
-    dispatching::Dispatcher,
+    dispatching::{dialogue::InMemStorage, Dispatcher},
     dptree,
     error_handlers::LoggingErrorHandler,
     update_listeners::{webhooks, UpdateListener},
@@ -13,7 +13,7 @@ use teloxide::{
 };
 
 use crate::{
-    bot::{bot_handler, init_bot_details},
+    bot::{bot_handler, init_bot_details, ChatState},
     jobs::init_scheduler,
     routes::app_router,
     settings::{database::DatabaseSettings, environment::Environment, Settings},
@@ -115,7 +115,12 @@ async fn start_bot(
     let handler = bot_handler();
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![settings.stickers, chatgpt, pool])
+        .dependencies(dptree::deps![
+            settings.stickers,
+            chatgpt,
+            pool,
+            InMemStorage::<ChatState>::new()
+        ])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(listener, LoggingErrorHandler::new())

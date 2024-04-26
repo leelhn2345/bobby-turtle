@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use async_openai::{
     config::OpenAIConfig,
     error::OpenAIError,
@@ -39,7 +37,7 @@ pub enum ChatError {
     IsBot,
 
     #[error("no chat message provided by user.")]
-    EmptyMessageFromUser(String),
+    EmptyMessageFromUser,
 
     #[error(transparent)]
     RequestError(#[from] RequestError),
@@ -83,15 +81,8 @@ pub async fn bot_chat(
                 .await?
         }
         Err(e) => {
-            if let ChatError::EmptyMessageFromUser(empty_msg_response) = e {
-                bot.send_message(msg.chat.id, empty_msg_response)
-                    .parse_mode(ParseMode::Markdown)
-                    .reply_to_message_id(msg.id)
-                    .await?
-            } else {
-                tracing::error!(error = %e);
-                return Err(e);
-            }
+            tracing::error!("{e:#?}");
+            return Err(e);
         }
     };
     Ok(chat_response)
@@ -105,20 +96,7 @@ pub async fn chatgpt_chat(
     pool: PgPool,
 ) -> Result<String, ChatError> {
     if chat_msg.is_empty() {
-        static ERR_MSG: OnceLock<String> = OnceLock::new();
-        let err_msg = ERR_MSG.get_or_init(|| {
-            format!(
-                "
-Hello! Feel free to chat with me! 😊
-
-Example: `/chat how are you?`
-
-Or include my name - `{}` in your message.
-            ",
-                BOT_NAME.get().unwrap()
-            )
-        });
-        return Err(ChatError::EmptyMessageFromUser(err_msg.into()));
+        return Err(ChatError::EmptyMessageFromUser);
     }
     if let Some(user) = &msg.via_bot {
         if user.is_bot {

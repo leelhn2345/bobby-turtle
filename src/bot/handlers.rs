@@ -44,5 +44,5 @@ pub fn to_bot(msg: Message) -> bool {
     tracing::debug!(text);
     tracing::debug!(name);
 
-    text.contains(name)
+    text.to_lowercase().contains(name)
 }

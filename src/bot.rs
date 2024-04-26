@@ -7,7 +7,10 @@ use std::sync::OnceLock;
 
 use anyhow::Result;
 use teloxide::{
-    dispatching::{DpHandlerDescription, HandlerExt, MessageFilterExt, UpdateFilterExt},
+    dispatching::{
+        dialogue::{Dialogue, InMemStorage},
+        DpHandlerDescription, HandlerExt, MessageFilterExt, UpdateFilterExt,
+    },
     dptree::{self, di::DependencyMap, Handler},
     requests::Requester,
     types::{ChatId, InputFile, Me, Message, Update},
@@ -27,6 +30,15 @@ use self::{
 pub static BOT_ME: OnceLock<Me> = OnceLock::new();
 /// feel free to `.unwrap()` once it has been initialized.
 pub static BOT_NAME: OnceLock<String> = OnceLock::new();
+
+#[derive(Clone, Default)]
+pub enum ChatState {
+    #[default]
+    Shutup,
+    Talk,
+}
+
+pub type BotDialogue = Dialogue<ChatState, InMemStorage<ChatState>>;
 
 pub async fn init_bot_details(bot: &Bot) {
     bot.set_my_commands(commands::Command::bot_commands())
@@ -57,6 +69,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
         .inspect(|u: Update| tracing::debug!("{:#?}", u))
         .branch(
             Update::filter_message()
+                .enter_dialogue::<Message, InMemStorage<ChatState>, ChatState>()
                 .branch(
                     dptree::entry()
                         .filter_command::<commands::Command>()
@@ -79,6 +92,6 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 )
                 .branch(dptree::filter(group_title_change).endpoint(ChatRoom::update_title))
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat))
-                .branch(dptree::filter(to_bot).endpoint(user_chat)),
+                .branch(dptree::case![ChatState::Talk].endpoint(user_chat)), // .branch(dptree::filter(to_bot).endpoint(user_chat)),
         )
 }
