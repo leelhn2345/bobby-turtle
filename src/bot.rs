@@ -22,7 +22,7 @@ use crate::chat::user_chat;
 
 use self::{
     chatroom::ChatRoom,
-    handlers::{group_title_change, is_not_group_chat, to_bot},
+    handlers::{group_title_change, is_not_group_chat},
     member::{handle_me_leave, i_got_added, i_got_removed},
 };
 
