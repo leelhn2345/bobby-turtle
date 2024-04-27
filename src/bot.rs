@@ -40,7 +40,14 @@ pub enum ChatState {
     Talk,
 }
 
+#[derive(Clone, Default)]
+pub enum CallbackState {
+    #[default]
+    Date,
+}
+
 pub type BotDialogue = Dialogue<ChatState, InMemStorage<ChatState>>;
+pub type CallbackDialogue = Dialogue<CallbackState, InMemStorage<CallbackState>>;
 
 pub async fn init_bot_details(bot: &Bot) {
     bot.set_my_commands(commands::Command::bot_commands())
@@ -72,6 +79,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
         .branch(
             Update::filter_message()
                 .enter_dialogue::<Message, InMemStorage<ChatState>, ChatState>()
+                .enter_dialogue::<Message, InMemStorage<CallbackState>, CallbackState>()
                 .branch(
                     dptree::entry()
                         .filter_command::<commands::Command>()
@@ -96,5 +104,9 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat))
                 .branch(dptree::case![ChatState::Talk].endpoint(user_chat)), // .branch(dptree::filter(to_bot).endpoint(user_chat)),
         )
-        .branch(Update::filter_callback_query().branch(dptree::endpoint(calendar_callback)))
+        .branch(
+            Update::filter_callback_query()
+                .enter_dialogue::<Message, InMemStorage<CallbackState>, CallbackState>()
+                .branch(dptree::case![CallbackState::Date].endpoint(calendar_callback)),
+        )
 }

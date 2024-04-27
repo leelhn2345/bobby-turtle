@@ -13,7 +13,7 @@ use teloxide::{
 };
 
 use crate::{
-    bot::{bot_handler, init_bot_details, ChatState},
+    bot::{bot_handler, init_bot_details, CallbackState, ChatState},
     jobs::init_scheduler,
     routes::app_router,
     settings::{database::DatabaseSettings, environment::Environment, Settings},
@@ -114,7 +114,8 @@ async fn start_bot(
             settings.stickers,
             chatgpt,
             pool,
-            InMemStorage::<ChatState>::new()
+            InMemStorage::<ChatState>::new(),
+            InMemStorage::<CallbackState>::new()
         ])
         .enable_ctrlc_handler()
         .build()

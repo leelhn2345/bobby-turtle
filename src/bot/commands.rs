@@ -8,7 +8,10 @@ use teloxide::{
 
 use crate::settings::stickers::Stickers;
 
-use super::{calendar::calendar, chatroom::ChatRoom, send_sticker, BotDialogue, ChatState};
+use super::{
+    calendar::calendar, chatroom::ChatRoom, send_sticker, BotDialogue, CallbackDialogue,
+    CallbackState, ChatState,
+};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -38,6 +41,7 @@ impl Command {
         cmd: Command,
         stickers: Stickers,
         dialogue: BotDialogue,
+        callback: CallbackDialogue,
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
@@ -78,6 +82,7 @@ impl Command {
                 bot.send_message(chat_id, "🐢 Work in Progress 🐢")
                     .reply_markup(calendar)
                     .await?;
+                callback.update(CallbackState::Date).await?;
             }
         };
         Ok(())
