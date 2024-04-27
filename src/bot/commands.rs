@@ -1,11 +1,14 @@
-use chrono::Utc;
+use chrono::{Datelike, Utc};
 use chrono_tz::Tz;
 use sqlx::PgPool;
-use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
+use teloxide::{
+    payloads::SendMessageSetters, requests::Requester, types::Message, utils::command::BotCommands,
+    Bot,
+};
 
 use crate::settings::stickers::Stickers;
 
-use super::{chatroom::ChatRoom, send_sticker, BotDialogue, ChatState};
+use super::{calendar::calendar, chatroom::ChatRoom, send_sticker, BotDialogue, ChatState};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -19,6 +22,8 @@ pub enum Command {
     Chat,
     #[command(description = "Make me shutup")]
     Shutup,
+    #[command(description = "Current month calendar")]
+    Calendar,
     #[command(description = "Current datetime (GMT +8)")]
     DateTime,
     #[command(description = "Feed me")]
@@ -36,33 +41,43 @@ impl Command {
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
-            Command::Help => {
+            Self::Help => {
                 bot.send_message(chat_id, Command::descriptions().to_string())
-                    .await?
+                    .await?;
             }
-            Command::DateTime => {
+            Self::DateTime => {
                 let now = Utc::now()
                     .with_timezone(&Tz::Singapore)
                     .format("%v\n%r")
                     .to_string();
-                bot.send_message(chat_id, now).await?
+                bot.send_message(chat_id, now).await?;
             }
             Self::Chat => {
                 dialogue.update(ChatState::Talk).await?;
                 send_sticker(&bot, &chat_id, stickers.hello).await?;
                 bot.send_message(chat_id, "Yo yo yo, what do you wanna chat about?? 😊")
-                    .await?
+                    .await?;
             }
             Self::Shutup => {
                 dialogue.update(ChatState::Shutup).await?;
                 send_sticker(&bot, &chat_id, stickers.whatever).await?;
                 bot.send_message(chat_id, "Huh?! Whatever 🙄. Byebye I'm off.")
-                    .await?
+                    .await?;
             }
             // Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg, pool).await?,
-            Command::Feed => {
+            Self::Feed => {
                 send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
-                bot.send_message(chat_id, "~ feature coming soon ~").await?
+                bot.send_message(chat_id, "~ feature coming soon ~").await?;
+            }
+            Self::Calendar => {
+                let now = Utc::now().with_timezone(&Tz::Singapore);
+                let calendar = calendar(now.day(), now.month(), now.year()).map_err(|e| {
+                    tracing::error!("{e:#?}");
+                    e
+                })?;
+                bot.send_message(chat_id, "🐢 Work in Progress 🐢")
+                    .reply_markup(calendar)
+                    .await?;
             }
         };
         Ok(())

@@ -1,3 +1,4 @@
+mod calendar;
 mod chatroom;
 mod commands;
 mod handlers;
