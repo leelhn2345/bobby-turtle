@@ -1,10 +1,10 @@
 # [Telegram Bot](https://t.me/baldyturtlebot)
 
 <!--toc:start-->
-- [Telegram Bot](#telegram-bot)
+- [[Telegram Bot](https://t.me/baldyturtlebot)](#telegram-bothttpstmebaldyturtlebot)
   - [Features](#features)
   - [Usage](#usage)
-  - [Local Development](#local-development)
+  - [Development](#development)
     - [Requirements](#requirements)
     - [Setup](#setup)
     - [Build](#build)
