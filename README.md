@@ -58,7 +58,9 @@ In my case:
 ngrok --http domain=xxxx.xxx.xxx.app 5000
 ```
 
-Copy [`.env.template`](./.env.template) to `.env` and fill up the corresponding environment values.
+Copy [`.env.template`](./.env.template) to `.env` and fill up the corresponding
+environment values.
+
 `APP_APPLICATION__PUBLIC_URL` is the **public URL** for reverse proxy.
 
 To start DB and trigger sql migrations:
