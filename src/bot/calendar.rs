@@ -146,7 +146,7 @@ fn get_inline_calendar(
         let prev_month_date = format!("01-{prev_month}-{year_of_prev_month} <<");
         InlineKeyboardButton::callback("<<", prev_month_date.clone())
     } else {
-        InlineKeyboardButton::callback("<<", " ")
+        InlineKeyboardButton::callback(" ", " ")
     };
 
     let next_month_date = format!(">> 01-{next_month}-{year_of_next_month}");

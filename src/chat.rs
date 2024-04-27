@@ -19,7 +19,9 @@ use teloxide::{
 
 use crate::bot::BOT_NAME;
 
+/// number of tokens from chatgpt's response
 const MAX_TOKENS: u16 = 512;
+/// chatgpt model used for query
 const MODEL: &str = "gpt-3.5-turbo";
 
 #[derive(thiserror::Error, Debug)]

@@ -22,7 +22,7 @@ pub enum Command {
     Chat,
     #[command(description = "Stop bot from responding to every message")]
     Shutup,
-    #[command(description = "Current month calendar")]
+    #[command(description = "Calendar")]
     Calendar,
     #[command(description = "Current datetime (GMT +8)")]
     DateTime,
