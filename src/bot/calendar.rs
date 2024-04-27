@@ -1,4 +1,4 @@
-use chrono::{Datelike, NaiveDate, Utc, Weekday};
+use chrono::{DateTime, Datelike, NaiveDate, Utc, Weekday};
 use chrono_tz::Tz;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
@@ -17,46 +17,45 @@ pub enum CalendarError {
 /// a string of empty space - ` ` is needed to render keyboard.
 #[tracing::instrument(skip_all)]
 pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup, CalendarError> {
-    let then = Utc::now()
+    let now = Utc::now().with_timezone(&Tz::Singapore);
+
+    let then = now
         .with_year(year)
         .ok_or(CalendarError::None)?
         .with_month(month)
         .ok_or(CalendarError::None)?
         .with_day(day)
-        .ok_or(CalendarError::None)?
-        .with_timezone(&Tz::Singapore);
+        .ok_or(CalendarError::None)?;
 
-    let mut calendar_vec = vec![
-        Weekday::Mon.to_string(),
-        Weekday::Tue.to_string(),
-        Weekday::Wed.to_string(),
-        Weekday::Thu.to_string(),
-        Weekday::Fri.to_string(),
-        Weekday::Sat.to_string(),
-        Weekday::Sun.to_string(),
-    ];
-
-    let empty_space = String::from(" ");
+    let mut calendar_vec: Vec<InlineKeyboardButton> = Vec::new();
 
     let weekday_of_first_day = then.with_day(1).ok_or(CalendarError::None)?.weekday();
 
     match weekday_of_first_day {
-        Weekday::Mon => calendar_vec.append(&mut vec![empty_space.clone(); 0]),
-        Weekday::Tue => calendar_vec.append(&mut vec![empty_space.clone(); 1]),
-        Weekday::Wed => calendar_vec.append(&mut vec![empty_space.clone(); 2]),
-        Weekday::Thu => calendar_vec.append(&mut vec![empty_space.clone(); 3]),
-        Weekday::Fri => calendar_vec.append(&mut vec![empty_space.clone(); 4]),
-        Weekday::Sat => calendar_vec.append(&mut vec![empty_space.clone(); 5]),
-        Weekday::Sun => calendar_vec.append(&mut vec![empty_space.clone(); 6]),
+        Weekday::Mon => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 0]),
+        Weekday::Tue => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]),
+        Weekday::Wed => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]),
+        Weekday::Thu => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]),
+        Weekday::Fri => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 4]),
+        Weekday::Sat => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 5]),
+        Weekday::Sun => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 6]),
     };
 
     let days_passed_in_curr_month = (day - 1)
         .try_into()
         .map_err(|_| CalendarError::Parsing("can't parse into usize".to_string()))?;
-    calendar_vec.append(&mut vec![empty_space.clone(); days_passed_in_curr_month]);
+    calendar_vec.append(&mut vec![
+        InlineKeyboardButton::callback(" ", " ");
+        days_passed_in_curr_month
+    ]);
 
-    let next_month = if month >= 12 { 1 } else { month + 1 };
-    let year_of_next_month = if month >= 12 { year + 1 } else { year };
+    let past_future_month_year = get_past_future_month_year(month, year);
+
+    let PastFutureMonthYear {
+        next_month,
+        year_of_next_month,
+        ..
+    } = past_future_month_year;
 
     let naive_last_day_of_month = NaiveDate::from_ymd_opt(year_of_next_month, next_month, 1)
         .ok_or(CalendarError::None)?
@@ -69,57 +68,129 @@ pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup,
         .day();
 
     if day != last_day_of_month {
-        (day..=last_day_of_month).for_each(|i| calendar_vec.push(i.to_string()));
-    }
+        let mut wow = (day..=last_day_of_month)
+            .map(|i| InlineKeyboardButton::callback(i.to_string(), format!("{i}-{month}-{year}")))
+            .collect();
+        calendar_vec.append(&mut wow);
+    };
     let last_weekday_of_month = then
         .with_day(last_day_of_month)
         .ok_or(CalendarError::None)?
         .weekday();
 
     match last_weekday_of_month {
-        Weekday::Mon => calendar_vec.append(&mut vec![empty_space.clone(); 6]),
-        Weekday::Tue => calendar_vec.append(&mut vec![empty_space.clone(); 5]),
-        Weekday::Wed => calendar_vec.append(&mut vec![empty_space.clone(); 4]),
-        Weekday::Thu => calendar_vec.append(&mut vec![empty_space.clone(); 3]),
-        Weekday::Fri => calendar_vec.append(&mut vec![empty_space.clone(); 2]),
-        Weekday::Sat => calendar_vec.append(&mut vec![empty_space.clone(); 1]),
-        Weekday::Sun => calendar_vec.append(&mut vec![empty_space.clone(); 0]),
+        Weekday::Mon => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 6]),
+        Weekday::Tue => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 5]),
+        Weekday::Wed => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 4]),
+        Weekday::Thu => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]),
+        Weekday::Fri => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]),
+        Weekday::Sat => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]),
+        Weekday::Sun => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 0]),
     }
 
-    let mut keyboard_buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
-
-    let month_name = match month {
-        1 => "Jan",
-        2 => "Feb",
-        3 => "Mar",
-        4 => "Apr",
-        5 => "May",
-        6 => "Jun",
-        7 => "Jul",
-        8 => "Aug",
-        9 => "Sep",
-        10 => "Oct",
-        11 => "Nov",
-        12 => "Dec",
-        _ => return Err(CalendarError::InvalidData), // Handle invalid month numbers
-    };
-
-    let month_row = ["<<", &format!("{month_name} {year}"), ">>"]
-        .into_iter()
-        .map(|x| InlineKeyboardButton::callback(x.to_owned(), x.to_owned()))
-        .collect();
-    keyboard_buttons.push(month_row);
+    let mut calendar = get_calendar(month, year, past_future_month_year, now)?;
 
     for week in calendar_vec.chunks(7) {
-        let week_row = week
-            .iter()
-            .map(|week| InlineKeyboardButton::callback(week, week))
-            .collect();
-
-        keyboard_buttons.push(week_row);
+        calendar.push(week.to_owned());
     }
 
-    Ok(InlineKeyboardMarkup::new(keyboard_buttons))
+    Ok(InlineKeyboardMarkup::new(calendar))
+}
+fn parse_month_to_str(month: u32) -> Result<&'static str, CalendarError> {
+    match month {
+        1 => Ok("Jan"),
+        2 => Ok("Feb"),
+        3 => Ok("Mar"),
+        4 => Ok("Apr"),
+        5 => Ok("May"),
+        6 => Ok("Jun"),
+        7 => Ok("Jul"),
+        8 => Ok("Aug"),
+        9 => Ok("Sep"),
+        10 => Ok("Oct"),
+        11 => Ok("Nov"),
+        12 => Ok("Dec"),
+        _ => Err(CalendarError::InvalidData), // Handle invalid month numbers
+    }
+}
+fn get_calendar(
+    month: u32,
+    year: i32,
+    data: PastFutureMonthYear,
+    now: DateTime<Tz>,
+) -> Result<Vec<Vec<InlineKeyboardButton>>, CalendarError> {
+    let month_name = parse_month_to_str(month)?;
+    let calendar_title =
+        InlineKeyboardButton::callback(format!("{month_name} {year}"), " ".to_owned());
+
+    let PastFutureMonthYear {
+        prev_month,
+        year_of_prev_month,
+        next_month,
+        year_of_next_month,
+    } = data;
+
+    let prev_month_first_day = now
+        .with_year(year)
+        .ok_or(CalendarError::None)?
+        .with_month(month)
+        .ok_or(CalendarError::None)?
+        .with_day(1)
+        .ok_or(CalendarError::None)?;
+
+    let prev_month_calendar = if prev_month_first_day > now {
+        let prev_month_date = format!("01-{prev_month}-{year_of_prev_month} <<");
+        InlineKeyboardButton::callback("<<", prev_month_date.clone())
+    } else {
+        InlineKeyboardButton::callback("<<", " ")
+    };
+
+    let next_month_date = format!(">> 01-{next_month}-{year_of_next_month}");
+
+    let next_month_calendar = InlineKeyboardButton::callback(">>", next_month_date.clone());
+
+    let month_row = Vec::from([prev_month_calendar, calendar_title, next_month_calendar]);
+
+    let weekday_key_val = [
+        ("Mon", " "),
+        ("Tue", " "),
+        ("Wed", " "),
+        ("Thu", " "),
+        ("Fri", " "),
+        ("Sat", " "),
+        ("Sun", " "),
+    ];
+    let weekday_buttons =
+        weekday_key_val.map(|x| InlineKeyboardButton::callback(x.0.to_owned(), x.1.to_owned()));
+    let weekday_row = Vec::from(weekday_buttons);
+
+    let keyboard_markup = vec![month_row, weekday_row];
+    Ok(keyboard_markup)
+}
+
+#[allow(clippy::struct_field_names)]
+#[derive(Copy, Clone)]
+struct PastFutureMonthYear {
+    prev_month: u32,
+    year_of_prev_month: i32,
+    next_month: u32,
+    year_of_next_month: i32,
+}
+
+/// Gets the information needed for prev and next month.
+/// Needed for pagination of calendar.
+fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
+    let prev_month = if month <= 1 { 12 } else { month - 1 };
+    let year_of_prev_month = if month <= 1 { year - 1 } else { year };
+    let next_month = if month >= 12 { 1 } else { month + 1 };
+    let year_of_next_month = if month >= 12 { year + 1 } else { year };
+
+    PastFutureMonthYear {
+        prev_month,
+        year_of_prev_month,
+        next_month,
+        year_of_next_month,
+    }
 }
 
 #[cfg(test)]
@@ -145,5 +216,17 @@ mod tests {
             .unwrap()
             .day();
         println!("{naive_last_day_of_month}");
+    }
+    #[test]
+    fn date_from_str() {
+        let now = Utc::now();
+        let tmr = now.with_day(30).unwrap();
+        if now < tmr {
+            println!("haha");
+        }
+        let foo = NaiveDate::parse_from_str(">> 29-12-2024", ">> %d-%m-%Y")
+            .unwrap()
+            .year_ce();
+        println! {"{foo:#?}"};
     }
 }
