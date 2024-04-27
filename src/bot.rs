@@ -14,7 +14,7 @@ use teloxide::{
     },
     dptree::{self, di::DependencyMap, Handler},
     requests::Requester,
-    types::{ChatId, InputFile, Me, Message, Update},
+    types::{CallbackQuery, ChatId, InputFile, Me, Message, Update},
     utils::command::BotCommands,
     Bot,
 };
@@ -106,7 +106,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
         )
         .branch(
             Update::filter_callback_query()
-                .enter_dialogue::<Message, InMemStorage<CallbackState>, CallbackState>()
+                .enter_dialogue::<CallbackQuery, InMemStorage<CallbackState>, CallbackState>()
                 .branch(dptree::case![CallbackState::Date].endpoint(calendar_callback)),
         )
 }
