@@ -7,8 +7,10 @@
   - [Development](#development)
     - [Requirements](#requirements)
     - [Setup](#setup)
-    - [Build](#build)
   - [Production](#production)
+    - [Build](#build)
+    - [Migration](#migration)
+    - [Prod Env](#prod-env)
 <!--toc:end-->
 
 A virtual turtle pet on telegram.
@@ -74,6 +76,8 @@ Run the app with:
 cargo run
 ```
 
+## Production
+
 ### Build
 
 to build app without communicating with database:
@@ -83,13 +87,15 @@ cargo sqlx prepare
 # or run `make prep`
 ```
 
-## Production
+### Migration
 
 To migrate production database:
 
 ```sh
 DATABASE_URL=<connection_string> sqlx migrate run
 ```
+
+### Prod Env
 
 Default configs are in [`./config`](./config) directory.
 
