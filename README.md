@@ -87,3 +87,7 @@ To migrate production database:
 ```sh
 DATABASE_URL=<connection_string> sqlx migrate run
 ```
+
+Default configs are in `./config` directory.
+
+For **runtime** or **sensitive** environment values, please refer to [`.env.prod`](./.env.prod).
