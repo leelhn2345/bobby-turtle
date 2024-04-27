@@ -11,8 +11,9 @@ services:
     ports:
       - 5000:5000
     environment:
-      # these env values are runtime values when app is deployed on cloud.
-      # have to set them up when simulating app in production runtime.
+      # these env keys have to be set for deployment.
+      # the values used below are for production simulation purpose.
+      # for more details, refer to `./.env.prod`.
       - APP_DATABASE__USERNAME=postgres
       - APP_DATABASE__PASSWORD=password
       - APP_DATABASE__HOST=database

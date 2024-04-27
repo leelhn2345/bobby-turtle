@@ -1,14 +1,16 @@
 # [Telegram Bot](https://t.me/baldyturtlebot)
 
 <!--toc:start-->
-- [Telegram Bot](#telegram-bot)
+- [[Telegram Bot](https://t.me/baldyturtlebot)](#telegram-bothttpstmebaldyturtlebot)
   - [Features](#features)
   - [Usage](#usage)
-  - [Local Development](#local-development)
+  - [Development](#development)
     - [Requirements](#requirements)
     - [Setup](#setup)
-    - [Build](#build)
   - [Production](#production)
+    - [Build](#build)
+    - [Migration](#migration)
+    - [Prod Env](#prod-env)
 <!--toc:end-->
 
 A virtual turtle pet on telegram.
@@ -25,9 +27,12 @@ A virtual turtle pet on telegram.
 
 Use `/help` in chat.
 
-## Local Development
+## Development
 
 Go to `http://<address>/<port>/docs` for app's Swagger UI.
+
+The default address and port has been configured in [`base.yaml`](./config/base.yaml)
+and [`local.yaml`](./config/local.yaml).
 
 ### Requirements
 
@@ -53,7 +58,9 @@ In my case:
 ngrok --http domain=xxxx.xxx.xxx.app 5000
 ```
 
-Copy `.env.template` to `.env` and fill up the corresponding environment values.
+Copy [`.env.template`](./.env.template) to `.env` and fill up the corresponding
+environment values.
+
 `APP_APPLICATION__PUBLIC_URL` is the **public URL** for reverse proxy.
 
 To start DB and trigger sql migrations:
@@ -71,6 +78,8 @@ Run the app with:
 cargo run
 ```
 
+## Production
+
 ### Build
 
 to build app without communicating with database:
@@ -80,10 +89,16 @@ cargo sqlx prepare
 # or run `make prep`
 ```
 
-## Production
+### Migration
 
 To migrate production database:
 
 ```sh
 DATABASE_URL=<connection_string> sqlx migrate run
 ```
+
+### Prod Env
+
+Default configs are in [`./config`](./config) directory.
+
+For **runtime** or **sensitive** environment values, please refer to [`.env.prod`](./.env.prod).

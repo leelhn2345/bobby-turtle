@@ -35,17 +35,12 @@ async fn start_server(
     ))
     .expect("unable to parse into address url");
 
-    tracing::info!("{address:#?}");
-
     let url = format!("{}/webhook", settings.application.public_url)
         .parse()
         .context(settings.application.public_url.to_string())
         .expect("unable to parse into webhook url");
 
-    tracing::info!("{url:#?}");
-
     let mut options = webhooks::Options::new(address, url);
-    tracing::info!("{bot:#?}");
 
     if env == Environment::Local {
         options = options.drop_pending_updates();
