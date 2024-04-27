@@ -1,6 +1,10 @@
 use chrono::{DateTime, Datelike, NaiveDate, Utc, Weekday};
 use chrono_tz::Tz;
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+use teloxide::{
+    requests::Requester,
+    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup},
+    Bot,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum CalendarError {
@@ -88,7 +92,7 @@ pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup,
         Weekday::Sun => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 0]),
     }
 
-    let mut calendar = get_calendar(month, year, past_future_month_year, now)?;
+    let mut calendar = get_inline_calendar(month, year, past_future_month_year, now)?;
 
     for week in calendar_vec.chunks(7) {
         calendar.push(week.to_owned());
@@ -113,7 +117,7 @@ fn parse_month_to_str(month: u32) -> Result<&'static str, CalendarError> {
         _ => Err(CalendarError::InvalidData), // Handle invalid month numbers
     }
 }
-fn get_calendar(
+fn get_inline_calendar(
     month: u32,
     year: i32,
     data: PastFutureMonthYear,
@@ -191,6 +195,13 @@ fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
         next_month,
         year_of_next_month,
     }
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn zzzz(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
+    tracing::debug!("{:#?}", q);
+    bot.answer_callback_query(q.id).await?;
+    Ok(())
 }
 
 #[cfg(test)]

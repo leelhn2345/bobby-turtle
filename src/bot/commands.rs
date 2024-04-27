@@ -18,9 +18,9 @@ use super::{calendar::calendar, chatroom::ChatRoom, send_sticker, BotDialogue, C
 pub enum Command {
     #[command(description = "See all available commands")]
     Help,
-    #[command(description = "Chat with me!")]
+    #[command(description = "Make bot respond to every message")]
     Chat,
-    #[command(description = "Make me shutup")]
+    #[command(description = "Stop bot from responding to every message")]
     Shutup,
     #[command(description = "Current month calendar")]
     Calendar,
