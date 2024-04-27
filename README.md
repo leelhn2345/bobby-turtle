@@ -29,6 +29,9 @@ Use `/help` in chat.
 
 Go to `http://<address>/<port>/docs` for app's Swagger UI.
 
+The default address and port has been configured in [base.yaml](./config/base.yaml)
+and [local.yaml](./config/local.yaml).
+
 ### Requirements
 
 - Reverse Proxy
