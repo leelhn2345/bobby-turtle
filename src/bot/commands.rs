@@ -59,7 +59,7 @@ impl Command {
             Self::Chat => {
                 dialogue.update(ChatState::Talk).await?;
                 send_sticker(&bot, &chat_id, stickers.hello).await?;
-                bot.send_message(chat_id, "Yo yo yo, what do you wanna chat about?? 😊")
+                bot.send_message(chat_id, "Hello! What do you wanna chat about?? 😊")
                     .await?;
             }
             Self::Shutup => {
