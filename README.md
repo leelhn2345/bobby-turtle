@@ -25,7 +25,7 @@ A virtual turtle pet on telegram.
 
 Use `/help` in chat.
 
-## Local Development
+## Development
 
 Go to `http://<address>/<port>/docs` for app's Swagger UI.
 
