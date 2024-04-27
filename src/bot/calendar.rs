@@ -1,10 +1,13 @@
 use chrono::{DateTime, Datelike, NaiveDate, Utc, Weekday};
 use chrono_tz::Tz;
 use teloxide::{
+    payloads::EditMessageTextSetters,
     requests::Requester,
-    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup},
+    types::{CallbackQuery, Chat, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     Bot,
 };
+
+const CURRENT_MONTH: &str = "Current Month";
 
 #[derive(thiserror::Error, Debug)]
 pub enum CalendarError {
@@ -16,6 +19,15 @@ pub enum CalendarError {
 
     #[error("Invalid data chosen")]
     InvalidData,
+
+    #[error("wrong era")]
+    WrongEra,
+
+    #[error("No callback data")]
+    NoCallbackData,
+
+    #[error("No message data from telegram")]
+    NoMessageData,
 }
 
 /// a string of empty space - ` ` is needed to render keyboard.
@@ -27,9 +39,11 @@ pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup,
         .with_year(year)
         .ok_or(CalendarError::None)?
         .with_month(month)
-        .ok_or(CalendarError::None)?
-        .with_day(day)
         .ok_or(CalendarError::None)?;
+
+    if then > now {
+        then.with_day(day).ok_or(CalendarError::None)?;
+    }
 
     let mut calendar_vec: Vec<InlineKeyboardButton> = Vec::new();
 
@@ -97,7 +111,12 @@ pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup,
     for week in calendar_vec.chunks(7) {
         calendar.push(week.to_owned());
     }
-
+    if then.month() != now.month() {
+        calendar.push(vec![InlineKeyboardButton::callback(
+            CURRENT_MONTH,
+            CURRENT_MONTH,
+        )]);
+    }
     Ok(InlineKeyboardMarkup::new(calendar))
 }
 fn parse_month_to_str(month: u32) -> Result<&'static str, CalendarError> {
@@ -135,9 +154,9 @@ fn get_inline_calendar(
     } = data;
 
     let prev_month_first_day = now
-        .with_year(year)
+        .with_year(year_of_prev_month)
         .ok_or(CalendarError::None)?
-        .with_month(month)
+        .with_month(prev_month)
         .ok_or(CalendarError::None)?
         .with_day(1)
         .ok_or(CalendarError::None)?;
@@ -146,7 +165,15 @@ fn get_inline_calendar(
         let prev_month_date = format!("01-{prev_month}-{year_of_prev_month} <<");
         InlineKeyboardButton::callback("<<", prev_month_date.clone())
     } else {
-        InlineKeyboardButton::callback(" ", " ")
+        let curr_day = now.day();
+        let curr_month = now.month();
+        let curr_year = now.year();
+        if prev_month == curr_month && year_of_prev_month == curr_year {
+            let prev_month_date = format!("{curr_day}-{prev_month}-{year_of_prev_month} <<");
+            InlineKeyboardButton::callback("<<", prev_month_date.clone())
+        } else {
+            InlineKeyboardButton::callback(" ", " ")
+        }
     };
 
     let next_month_date = format!(">> 01-{next_month}-{year_of_next_month}");
@@ -198,9 +225,61 @@ fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn zzzz(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
-    tracing::debug!("{:#?}", q);
+pub async fn calendar_callback(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
+
+    let Some(data) = q.data else {
+        tracing::error!("query data is None. should contain string or empty string.");
+        return Err(CalendarError::NoCallbackData.into());
+    };
+    let Some(Message { id, chat, .. }) = q.message else {
+        tracing::error!("no message data from telegram");
+        return Err(CalendarError::NoMessageData.into());
+    };
+
+    if data.trim().is_empty() {
+        return Ok(());
+    } else if data == CURRENT_MONTH {
+        let now = Utc::now().with_timezone(&Tz::Singapore);
+        let calendar = calendar(now.day(), now.month(), now.year()).map_err(|e| {
+            tracing::error!("{e:#?}");
+            e
+        })?;
+        bot.edit_message_text(chat.id, id, "🐢 Work in Progress 🐢")
+            .reply_markup(calendar)
+            .await?;
+    } else if data.strip_suffix(" <<").is_some() {
+        let naive_prev_month = NaiveDate::parse_from_str(&data, "%d-%m-%Y <<")?;
+        send_prev_or_next_month(naive_prev_month, chat, id, bot).await?;
+    } else if data.strip_prefix(">> ").is_some() {
+        let naive_next_month = NaiveDate::parse_from_str(&data, ">> %d-%m-%Y")?;
+        send_prev_or_next_month(naive_next_month, chat, id, bot).await?;
+    } else {
+        let text = format!("You chose {data}.");
+        bot.edit_message_text(chat.id, id, text).await?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::cast_possible_wrap)]
+async fn send_prev_or_next_month(
+    d: NaiveDate,
+    chat: Chat,
+    id: MessageId,
+    bot: Bot,
+) -> anyhow::Result<()> {
+    let naive_day = d.day0() + 1;
+    let naive_month = d.month0() + 1;
+    let ce_year_of_naive_month = d.year_ce();
+    let naive_year = ce_year_of_naive_month.1 as i32;
+    if !ce_year_of_naive_month.0 {
+        tracing::error!("year of wrong era - {}", naive_year);
+        return Err(CalendarError::WrongEra.into());
+    }
+    let calendar = calendar(naive_day, naive_month, naive_year)?;
+    bot.edit_message_text(chat.id, id, "🐢 Work in Progress 🐢")
+        .reply_markup(calendar)
+        .await?;
     Ok(())
 }
 

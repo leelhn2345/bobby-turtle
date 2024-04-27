@@ -22,7 +22,7 @@ use teloxide::{
 use crate::chat::user_chat;
 
 use self::{
-    calendar::zzzz,
+    calendar::calendar_callback,
     chatroom::ChatRoom,
     handlers::{group_title_change, is_not_group_chat},
     member::{handle_me_leave, i_got_added, i_got_removed},
@@ -96,5 +96,5 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat))
                 .branch(dptree::case![ChatState::Talk].endpoint(user_chat)), // .branch(dptree::filter(to_bot).endpoint(user_chat)),
         )
-        .branch(Update::filter_callback_query().branch(dptree::endpoint(zzzz)))
+        .branch(Update::filter_callback_query().branch(dptree::endpoint(calendar_callback)))
 }
