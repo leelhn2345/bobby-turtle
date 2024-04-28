@@ -3,10 +3,11 @@ mod chatroom;
 mod commands;
 mod handlers;
 mod member;
+mod occurence;
 
 use std::sync::OnceLock;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use teloxide::{
     dispatching::{
         dialogue::{Dialogue, InMemStorage},
@@ -26,6 +27,7 @@ use self::{
     chatroom::ChatRoom,
     handlers::{group_title_change, is_not_group_chat},
     member::{handle_me_leave, i_got_added, i_got_removed},
+    occurence::occurence_callback,
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
@@ -43,7 +45,9 @@ pub enum ChatState {
 #[derive(Clone, Default)]
 pub enum CallbackState {
     #[default]
+    Expired,
     Date,
+    Occcurence,
 }
 
 pub type BotDialogue = Dialogue<ChatState, InMemStorage<ChatState>>;
@@ -69,6 +73,22 @@ pub async fn init_bot_details(bot: &Bot) {
 
 pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
     bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))
+        .await?;
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn expired_callback_endpt(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
+    let Some(Message { id, chat, .. }) = q.message else {
+        tracing::error!("no message data from telegram");
+        bail!("no query message")
+    };
+    expired_callback_msg(bot, chat, id).await?;
+    Ok(())
+}
+
+pub async fn expired_callback_msg(bot: Bot, chat: Chat, id: MessageId) -> anyhow::Result<()> {
+    bot.edit_message_text(chat.id, id, "This has expired 😅 🐢🐢🐢")
         .await?;
     Ok(())
 }
@@ -107,6 +127,8 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
         .branch(
             Update::filter_callback_query()
                 .enter_dialogue::<CallbackQuery, InMemStorage<CallbackState>, CallbackState>()
-                .branch(dptree::case![CallbackState::Date].endpoint(calendar_callback)),
+                .branch(dptree::case![CallbackState::Occcurence].endpoint(occurence_callback))
+                .branch(dptree::case![CallbackState::Date].endpoint(calendar_callback))
+                .branch(dptree::case![CallbackState::Expired].endpoint(expired_callback_endpt)),
         )
 }
