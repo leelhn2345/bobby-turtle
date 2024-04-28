@@ -1,14 +1,14 @@
-use chrono::{Datelike, Utc};
+use chrono::Utc;
 use chrono_tz::Tz;
 use sqlx::PgPool;
-use teloxide::{
-    payloads::SendMessageSetters, requests::Requester, types::Message, utils::command::BotCommands,
-    Bot,
-};
+use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
 use crate::settings::stickers::Stickers;
 
-use super::{calendar::calendar, chatroom::ChatRoom, send_sticker, BotDialogue, ChatState};
+use super::{
+    chatroom::ChatRoom, occurence::pick_occurence, send_sticker, BotDialogue, CallbackDialogue,
+    CallbackState, ChatState,
+};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -22,8 +22,8 @@ pub enum Command {
     Chat,
     #[command(description = "Stop bot from responding to every message")]
     Shutup,
-    #[command(description = "Calendar")]
-    Calendar,
+    #[command(description = "Let me remind you")]
+    Remind,
     #[command(description = "Current datetime (GMT +8)")]
     DateTime,
     #[command(description = "Feed me")]
@@ -38,6 +38,7 @@ impl Command {
         cmd: Command,
         stickers: Stickers,
         dialogue: BotDialogue,
+        callback: CallbackDialogue,
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
@@ -69,15 +70,9 @@ impl Command {
                 send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
                 bot.send_message(chat_id, "~ feature coming soon ~").await?;
             }
-            Self::Calendar => {
-                let now = Utc::now().with_timezone(&Tz::Singapore);
-                let calendar = calendar(now.day(), now.month(), now.year()).map_err(|e| {
-                    tracing::error!("{e:#?}");
-                    e
-                })?;
-                bot.send_message(chat_id, "🐢 Work in Progress 🐢")
-                    .reply_markup(calendar)
-                    .await?;
+            Self::Remind => {
+                callback.update(CallbackState::Occcurence).await?;
+                pick_occurence(bot, msg.chat).await?;
             }
         };
         Ok(())
