@@ -3,10 +3,11 @@ mod chatroom;
 mod commands;
 mod handlers;
 mod member;
+mod occurence;
 
 use std::sync::OnceLock;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use teloxide::{
     dispatching::{
         dialogue::{Dialogue, InMemStorage},
@@ -14,7 +15,7 @@ use teloxide::{
     },
     dptree::{self, di::DependencyMap, Handler},
     requests::Requester,
-    types::{ChatId, InputFile, Me, Message, Update},
+    types::{CallbackQuery, Chat, ChatId, InputFile, Me, Message, MessageId, Update},
     utils::command::BotCommands,
     Bot,
 };
@@ -26,6 +27,7 @@ use self::{
     chatroom::ChatRoom,
     handlers::{group_title_change, is_not_group_chat},
     member::{handle_me_leave, i_got_added, i_got_removed},
+    occurence::occurence_callback,
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
@@ -40,7 +42,16 @@ pub enum ChatState {
     Talk,
 }
 
+#[derive(Clone, Default)]
+pub enum CallbackState {
+    #[default]
+    Expired,
+    Date,
+    Occcurence,
+}
+
 pub type BotDialogue = Dialogue<ChatState, InMemStorage<ChatState>>;
+pub type CallbackDialogue = Dialogue<CallbackState, InMemStorage<CallbackState>>;
 
 pub async fn init_bot_details(bot: &Bot) {
     bot.set_my_commands(commands::Command::bot_commands())
@@ -66,12 +77,29 @@ pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> an
     Ok(())
 }
 
+#[tracing::instrument(skip_all)]
+async fn expired_callback_endpt(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
+    let Some(Message { id, chat, .. }) = q.message else {
+        tracing::error!("no message data from telegram");
+        bail!("no query message")
+    };
+    expired_callback_msg(bot, chat, id).await?;
+    Ok(())
+}
+
+pub async fn expired_callback_msg(bot: Bot, chat: Chat, id: MessageId) -> anyhow::Result<()> {
+    bot.edit_message_text(chat.id, id, "This has expired 😅 🐢🐢🐢")
+        .await?;
+    Ok(())
+}
+
 pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDescription> {
     dptree::entry()
         .inspect(|u: Update| tracing::debug!("{:#?}", u))
         .branch(
             Update::filter_message()
                 .enter_dialogue::<Message, InMemStorage<ChatState>, ChatState>()
+                .enter_dialogue::<Message, InMemStorage<CallbackState>, CallbackState>()
                 .branch(
                     dptree::entry()
                         .filter_command::<commands::Command>()
@@ -96,5 +124,11 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat))
                 .branch(dptree::case![ChatState::Talk].endpoint(user_chat)), // .branch(dptree::filter(to_bot).endpoint(user_chat)),
         )
-        .branch(Update::filter_callback_query().branch(dptree::endpoint(calendar_callback)))
+        .branch(
+            Update::filter_callback_query()
+                .enter_dialogue::<CallbackQuery, InMemStorage<CallbackState>, CallbackState>()
+                .branch(dptree::case![CallbackState::Occcurence].endpoint(occurence_callback))
+                .branch(dptree::case![CallbackState::Date].endpoint(calendar_callback))
+                .branch(dptree::case![CallbackState::Expired].endpoint(expired_callback_endpt)),
+        )
 }

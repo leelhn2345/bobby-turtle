@@ -23,7 +23,7 @@ impl TryFrom<String> for Environment {
             }
             "production" => Ok(Self::Production),
             unknown => Err(format!(
-                "{unknown} is not a supportedf environment. use either `local` or `production`"
+                "{unknown} is not a supported environment. use either `local` or `production`"
             )),
         }
     }
