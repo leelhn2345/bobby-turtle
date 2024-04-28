@@ -1,3 +1,4 @@
+use anyhow::bail;
 use chrono::{DateTime, Datelike, NaiveDate, Utc, Weekday};
 use chrono_tz::Tz;
 use teloxide::{
@@ -7,7 +8,16 @@ use teloxide::{
     Bot,
 };
 
-const CURRENT_MONTH: &str = "Current Month";
+use crate::bot::expired_callback_msg;
+
+use super::{
+    occurence::{occurence_keyboard, OCCURENCE_DESCRIPTION},
+    CallbackDialogue, CallbackState,
+};
+
+const CURRENT_MONTH: &str = "Current";
+const OCCURENCE: &str = "Occurence";
+pub const DATE_PICK_MSG: &str = "Pick your date 🐢";
 
 #[derive(thiserror::Error, Debug)]
 pub enum CalendarError {
@@ -30,7 +40,9 @@ pub enum CalendarError {
     NoMessageData,
 }
 
-/// a string of empty space - ` ` is needed to render keyboard.
+/// this function returns the inlinekeyboard needed to render calendar.
+///
+/// an empty space string is needed to render keyboard.
 #[tracing::instrument(skip_all)]
 pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup, CalendarError> {
     let now = Utc::now().with_timezone(&Tz::Singapore);
@@ -111,12 +123,11 @@ pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup,
     for week in calendar_vec.chunks(7) {
         calendar.push(week.to_owned());
     }
+    let mut occurence_row = vec![InlineKeyboardButton::callback("Back", OCCURENCE)];
     if then.month() != now.month() {
-        calendar.push(vec![InlineKeyboardButton::callback(
-            CURRENT_MONTH,
-            CURRENT_MONTH,
-        )]);
+        occurence_row.push(InlineKeyboardButton::callback(CURRENT_MONTH, CURRENT_MONTH));
     }
+    calendar.push(occurence_row);
     Ok(InlineKeyboardMarkup::new(calendar))
 }
 fn parse_month_to_str(month: u32) -> Result<&'static str, CalendarError> {
@@ -224,8 +235,13 @@ fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
     }
 }
 
+#[allow(deprecated)]
 #[tracing::instrument(skip_all)]
-pub async fn calendar_callback(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
+pub async fn calendar_callback(
+    bot: Bot,
+    q: CallbackQuery,
+    callback: CallbackDialogue,
+) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
 
     let Some(data) = q.data else {
@@ -239,24 +255,40 @@ pub async fn calendar_callback(bot: Bot, q: CallbackQuery) -> anyhow::Result<()>
 
     if data.trim().is_empty() {
         return Ok(());
-    } else if data == CURRENT_MONTH {
-        let now = Utc::now().with_timezone(&Tz::Singapore);
-        let calendar = calendar(now.day(), now.month(), now.year()).map_err(|e| {
-            tracing::error!("{e:#?}");
-            e
-        })?;
-        bot.edit_message_text(chat.id, id, "🐢 Work in Progress 🐢")
-            .reply_markup(calendar)
-            .await?;
     } else if data.strip_suffix(" <<").is_some() {
         let naive_prev_month = NaiveDate::parse_from_str(&data, "%d-%m-%Y <<")?;
         send_prev_or_next_month(naive_prev_month, chat, id, bot).await?;
     } else if data.strip_prefix(">> ").is_some() {
         let naive_next_month = NaiveDate::parse_from_str(&data, ">> %d-%m-%Y")?;
         send_prev_or_next_month(naive_next_month, chat, id, bot).await?;
-    } else {
+    } else if NaiveDate::parse_from_str(&data, "%d-%m-%Y").is_ok() {
         let text = format!("You chose {data}.");
         bot.edit_message_text(chat.id, id, text).await?;
+    } else {
+        match data.as_ref() {
+            OCCURENCE => {
+                callback.update(CallbackState::Occcurence).await?;
+                bot.edit_message_text(chat.id, id, OCCURENCE_DESCRIPTION)
+                    .parse_mode(teloxide::types::ParseMode::Markdown)
+                    .reply_markup(occurence_keyboard())
+                    .await?;
+            }
+            CURRENT_MONTH => {
+                let now = Utc::now().with_timezone(&Tz::Singapore);
+                let calendar = calendar(now.day(), now.month(), now.year()).map_err(|e| {
+                    tracing::error!("{e:#?}");
+                    e
+                })?;
+                bot.edit_message_text(chat.id, id, DATE_PICK_MSG)
+                    .reply_markup(calendar)
+                    .await?;
+            }
+            unknown => {
+                tracing::error!(unknown, "unrecognizable value");
+                expired_callback_msg(bot, chat, id).await?;
+                bail!(CalendarError::InvalidData);
+            }
+        }
     }
     Ok(())
 }
@@ -277,7 +309,7 @@ async fn send_prev_or_next_month(
         return Err(CalendarError::WrongEra.into());
     }
     let calendar = calendar(naive_day, naive_month, naive_year)?;
-    bot.edit_message_text(chat.id, id, "🐢 Work in Progress 🐢")
+    bot.edit_message_text(chat.id, id, DATE_PICK_MSG)
         .reply_markup(calendar)
         .await?;
     Ok(())
