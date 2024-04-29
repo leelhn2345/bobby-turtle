@@ -4,10 +4,12 @@ mod commands;
 mod handlers;
 mod member;
 mod occurence;
+mod time_pick;
 
 use std::sync::OnceLock;
 
 use anyhow::{bail, Result};
+use chrono::NaiveDate;
 use teloxide::{
     dispatching::{
         dialogue::{Dialogue, InMemStorage},
@@ -28,6 +30,7 @@ use self::{
     handlers::{group_title_change, is_not_group_chat},
     member::{handle_me_leave, i_got_added, i_got_removed},
     occurence::occurence_callback,
+    time_pick::{time_pick_callback, RemindTime},
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
@@ -46,8 +49,12 @@ pub enum ChatState {
 pub enum CallbackState {
     #[default]
     Expired,
-    Date,
     Occcurence,
+    RemindDate,
+    RemindDateTime {
+        date: NaiveDate,
+        time: RemindTime,
+    },
 }
 
 pub type BotDialogue = Dialogue<ChatState, InMemStorage<ChatState>>;
@@ -128,7 +135,11 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
             Update::filter_callback_query()
                 .enter_dialogue::<CallbackQuery, InMemStorage<CallbackState>, CallbackState>()
                 .branch(dptree::case![CallbackState::Occcurence].endpoint(occurence_callback))
-                .branch(dptree::case![CallbackState::Date].endpoint(calendar_callback))
+                .branch(dptree::case![CallbackState::RemindDate].endpoint(calendar_callback))
+                .branch(
+                    dptree::case![CallbackState::RemindDateTime { date, time }]
+                        .endpoint(time_pick_callback),
+                )
                 .branch(dptree::case![CallbackState::Expired].endpoint(expired_callback_endpt)),
         )
 }

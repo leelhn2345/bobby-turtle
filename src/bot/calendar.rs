@@ -12,6 +12,7 @@ use crate::bot::expired_callback_msg;
 
 use super::{
     occurence::{occurence_keyboard, OCCURENCE_DESCRIPTION},
+    time_pick::{time_pick_keyboard, RemindTime},
     CallbackDialogue, CallbackState,
 };
 
@@ -45,6 +46,10 @@ pub enum CalendarError {
 /// an empty space string is needed to render keyboard.
 #[tracing::instrument(skip_all)]
 pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup, CalendarError> {
+    tracing::debug!(?day);
+    tracing::debug!(?month);
+    tracing::debug!(?year);
+
     let now = Utc::now().with_timezone(&Tz::Singapore);
 
     let then = now
@@ -97,12 +102,11 @@ pub fn calendar(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup,
         .ok_or(CalendarError::None)?
         .day();
 
-    if day != last_day_of_month {
-        let mut wow = (day..=last_day_of_month)
-            .map(|i| InlineKeyboardButton::callback(i.to_string(), format!("{i}-{month}-{year}")))
-            .collect();
-        calendar_vec.append(&mut wow);
-    };
+    let mut wow = (day..=last_day_of_month)
+        .map(|i| InlineKeyboardButton::callback(i.to_string(), format!("{i}-{month}-{year}")))
+        .collect();
+    calendar_vec.append(&mut wow);
+
     let last_weekday_of_month = then
         .with_day(last_day_of_month)
         .ok_or(CalendarError::None)?
@@ -262,8 +266,38 @@ pub async fn calendar_callback(
         let naive_next_month = NaiveDate::parse_from_str(&data, ">> %d-%m-%Y")?;
         send_prev_or_next_month(naive_next_month, chat, id, bot).await?;
     } else if NaiveDate::parse_from_str(&data, "%d-%m-%Y").is_ok() {
-        let text = format!("You chose {data}. work-in-progress");
-        bot.edit_message_text(chat.id, id, text).await?;
+        let naive_date = NaiveDate::parse_from_str(&data, "%d-%m-%Y")?;
+        let chosen_day = naive_date.day0() + 1;
+        let chosen_month = naive_date.month0() + 1;
+        let chosen_year = naive_date.year_ce().1;
+        let text = format!(
+            r"You have chosen: 
+
+year: {chosen_year}
+month: {chosen_month} 
+day: {chosen_day}
+
+Now, let's choose the time. 🐢
+The time is in 24 hours format."
+        );
+        let remind_time = RemindTime::default();
+
+        callback
+            .update(CallbackState::RemindDateTime {
+                date: naive_date,
+                time: remind_time.clone(),
+            })
+            .await?;
+
+        let time_pick = time_pick_keyboard(
+            remind_time.tenth_hour,
+            remind_time.hour,
+            remind_time.tenth_minute,
+            remind_time.minute,
+        );
+        bot.edit_message_text(chat.id, id, text)
+            .reply_markup(time_pick)
+            .await?;
     } else {
         match data.as_ref() {
             OCCURENCE => {

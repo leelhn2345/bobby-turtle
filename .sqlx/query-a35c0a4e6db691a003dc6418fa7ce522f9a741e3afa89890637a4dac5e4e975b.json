@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT name, role, content FROM chatlogs\n        WHERE message_id = $1\n        AND datetime>= CURRENT_TIMESTAMP - INTERVAL '1 hour'\n        ORDER BY datetime DESC\n        LIMIT 10\n        ",
+  "query": "\n        SELECT name, role, content FROM chatlogs\n        WHERE message_id = $1\n        AND datetime>= CURRENT_TIMESTAMP - INTERVAL '1 hour'\n        ORDER BY datetime DESC\n        LIMIT $2\n        ",
   "describe": {
     "columns": [
       {
@@ -21,6 +21,7 @@
     ],
     "parameters": {
       "Left": [
+        "Int8",
         "Int8"
       ]
     },
@@ -30,5 +31,5 @@
       false
     ]
   },
-  "hash": "6f056eb9bde9c82cdb466b3c2369ee2fbe2a04c453d06275ebd453ba89c41b77"
+  "hash": "a35c0a4e6db691a003dc6418fa7ce522f9a741e3afa89890637a4dac5e4e975b"
 }

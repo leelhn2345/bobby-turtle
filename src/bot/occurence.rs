@@ -1,5 +1,6 @@
 use anyhow::bail;
 use chrono::{Datelike, Utc};
+use chrono_tz::Tz;
 use teloxide::{
     payloads::{EditMessageTextSetters, SendMessageSetters},
     requests::Requester,
@@ -94,9 +95,9 @@ pub async fn occurence_callback(
     };
     match occurence {
         Occurence::OneOff => {
-            let now = Utc::now();
+            let now = Utc::now().with_timezone(&Tz::Singapore);
             let calendar = calendar(now.day(), now.month(), now.year())?;
-            callback.update(CallbackState::Date).await?;
+            callback.update(CallbackState::RemindDate).await?;
             tracing::debug!("changed callback state to date");
             bot.edit_message_text(chat.id, id, DATE_PICK_MSG)
                 .reply_markup(calendar)
