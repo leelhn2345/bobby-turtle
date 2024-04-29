@@ -96,7 +96,7 @@ pub async fn occurence_callback(
         Occurence::OneOff => {
             let now = Utc::now();
             let calendar = calendar(now.day(), now.month(), now.year())?;
-            callback.update(CallbackState::Date).await?;
+            callback.update(CallbackState::RemindDate).await?;
             tracing::debug!("changed callback state to date");
             bot.edit_message_text(chat.id, id, DATE_PICK_MSG)
                 .reply_markup(calendar)

@@ -262,7 +262,22 @@ pub async fn calendar_callback(
         let naive_next_month = NaiveDate::parse_from_str(&data, ">> %d-%m-%Y")?;
         send_prev_or_next_month(naive_next_month, chat, id, bot).await?;
     } else if NaiveDate::parse_from_str(&data, "%d-%m-%Y").is_ok() {
-        let text = format!("You chose {data}.");
+        let naive_date = NaiveDate::parse_from_str(&data, "%d-%m-%Y")?;
+        let chosen_day = naive_date.day0() + 1;
+        let chosen_month = naive_date.month0() + 1;
+        let chosen_year = naive_date.year_ce().1;
+        let text = format!(
+            r"You have chosen: 
+
+day:    {chosen_day}
+month:  {chosen_month} 
+year:   {chosen_year}
+
+Now, let's choose the time. 🐢"
+        );
+        callback
+            .update(CallbackState::RemindDateTime { date: naive_date })
+            .await?;
         bot.edit_message_text(chat.id, id, text).await?;
     } else {
         match data.as_ref() {
