@@ -13,7 +13,6 @@ use crate::bot::expired_callback_msg;
 use super::{
     occurence::{occurence_keyboard, OCCURENCE_DESCRIPTION},
     time_pick::{time_pick_keyboard, RemindTime},
-
     CallbackDialogue, CallbackState,
 };
 

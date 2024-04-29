@@ -6,7 +6,6 @@ mod member;
 mod occurence;
 mod time_pick;
 
-
 use std::sync::OnceLock;
 
 use anyhow::{bail, Result};
@@ -32,7 +31,6 @@ use self::{
     member::{handle_me_leave, i_got_added, i_got_removed},
     occurence::occurence_callback,
     time_pick::{time_pick_callback, RemindTime},
-
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
