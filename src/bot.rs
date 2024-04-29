@@ -15,7 +15,7 @@ use teloxide::{
     },
     dptree::{self, di::DependencyMap, Handler},
     requests::Requester,
-    types::{CallbackQuery, ChatId, InputFile, Me, Message, Update},
+    types::{CallbackQuery, Chat, ChatId, InputFile, Me, Message, MessageId, Update},
     utils::command::BotCommands,
     Bot,
 };
