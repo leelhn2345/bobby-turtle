@@ -23,6 +23,8 @@ use crate::bot::BOT_NAME;
 const MAX_TOKENS: u16 = 512;
 /// chatgpt model used for query
 const MODEL: &str = "gpt-3.5-turbo";
+// number of past chat records to retrieve
+const PAST_LOG_COUNT: i64 = 20;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChatError {
@@ -83,7 +85,11 @@ pub async fn bot_chat(
                 .await?
         }
         Err(e) => {
-            tracing::error!("{e:#?}");
+            if let Some(username) = msg.chat.username() {
+                tracing::error!("{} chatted with bot.\n{e:#?}", username);
+            } else {
+                tracing::error!("{e:#?}");
+            }
             return Err(e);
         }
     };
@@ -203,9 +209,10 @@ async fn get_logs(
         WHERE message_id = $1
         AND datetime>= CURRENT_TIMESTAMP - INTERVAL '1 hour'
         ORDER BY datetime DESC
-        LIMIT 10
+        LIMIT $2
         "#,
-        msg_id
+        msg_id,
+        PAST_LOG_COUNT
     )
     .fetch_all(&mut **tx)
     .await?;
