@@ -30,7 +30,7 @@ use self::{
     handlers::{group_title_change, is_not_group_chat},
     member::{handle_me_leave, i_got_added, i_got_removed},
     occurence::occurence_callback,
-    time_pick::time_pick_callback,
+    time_pick::{time_pick_callback, RemindTime},
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
@@ -53,6 +53,7 @@ pub enum CallbackState {
     RemindDate,
     RemindDateTime {
         date: NaiveDate,
+        time: RemindTime,
     },
 }
 
@@ -136,7 +137,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .branch(dptree::case![CallbackState::Occcurence].endpoint(occurence_callback))
                 .branch(dptree::case![CallbackState::RemindDate].endpoint(calendar_callback))
                 .branch(
-                    dptree::case![CallbackState::RemindDateTime { date }]
+                    dptree::case![CallbackState::RemindDateTime { date, time }]
                         .endpoint(time_pick_callback),
                 )
                 .branch(dptree::case![CallbackState::Expired].endpoint(expired_callback_endpt)),
