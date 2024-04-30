@@ -11,6 +11,7 @@ use teloxide::{
     update_listeners::{webhooks, UpdateListener},
     Bot,
 };
+use tokio_cron_scheduler::JobScheduler;
 
 use crate::{
     bot::{bot_handler, init_bot_details, CallbackState, ChatState},
@@ -84,7 +85,7 @@ pub async fn start_app(settings: Settings, env: Environment) {
 
     let listener = start_server(tele_bot.clone(), &settings, env).await;
 
-    init_scheduler(&tele_bot, &settings.stickers, &connection_pool)
+    let sched = init_scheduler(&tele_bot, &settings.stickers, &connection_pool)
         .await
         .expect("cannot initialize scheduler");
 
@@ -94,6 +95,7 @@ pub async fn start_app(settings: Settings, env: Environment) {
         settings,
         chatgpt,
         connection_pool,
+        sched,
     ))
     .await;
 }
@@ -104,6 +106,7 @@ async fn start_bot(
     settings: Settings,
     chatgpt: Client<OpenAIConfig>,
     pool: PgPool,
+    sched: JobScheduler,
 ) {
     init_bot_details(&bot).await;
 
@@ -115,7 +118,8 @@ async fn start_bot(
             chatgpt,
             pool,
             InMemStorage::<ChatState>::new(),
-            InMemStorage::<CallbackState>::new()
+            InMemStorage::<CallbackState>::new(),
+            sched
         ])
         .enable_ctrlc_handler()
         .build()

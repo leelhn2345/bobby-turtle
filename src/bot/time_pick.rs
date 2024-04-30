@@ -1,5 +1,5 @@
 use anyhow::bail;
-use chrono::{Datelike, NaiveDate, Timelike, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 use chrono_tz::Tz;
 use teloxide::{
     payloads::EditMessageTextSetters,
@@ -8,6 +8,8 @@ use teloxide::{
     Bot,
 };
 
+use crate::bot::expired_callback_msg;
+
 use super::{
     calendar::{calendar, DATE_PICK_MSG},
     CallbackDialogue, CallbackState,
@@ -15,6 +17,7 @@ use super::{
 
 const BACK: &str = "Back";
 const NEXT: &str = "Next";
+pub const CHANGE_TIME: &str = "Change Time";
 
 const TEN_HOUR_UP: &str = "TenHourUp";
 const HOUR_UP: &str = "HourUp";
@@ -25,6 +28,12 @@ const TEN_HOUR_DOWN: &str = "TenHourDown";
 const HOUR_DOWN: &str = "HourDown";
 const TEN_MINUTE_DOWN: &str = "TenMinuteDown";
 const MINUTE_DOWN: &str = "MinuteDown";
+
+#[derive(thiserror::Error, Debug)]
+pub enum TimePickError {
+    #[error("Unparseble by chrono crate")]
+    ChronoNone,
+}
 
 enum TimeSelect {
     TenHourUp,
@@ -94,6 +103,28 @@ impl Default for RemindTime {
 }
 
 impl RemindTime {
+    fn new(hour: u32, minute: u32) -> Result<Self, String> {
+        if hour > 23 {
+            return Err(format!("invalid hour: {hour}"));
+        }
+
+        if minute > 59 {
+            return Err(format!("invalid minuet: {minute}"));
+        }
+
+        let tenth_hour = hour / 10;
+        let hour = hour % 10;
+        let tenth_minute = minute / 10;
+        let minute = minute % 10;
+
+        Ok(Self {
+            tenth_hour,
+            hour,
+            tenth_minute,
+            minute,
+        })
+    }
+
     fn tenth_hour_up(&mut self) {
         match self.hour {
             0..=3 => {
@@ -192,7 +223,7 @@ impl RemindTime {
         if self.minute == 0 {
             self.minute = 9;
         } else {
-            self.minute += 1;
+            self.minute -= 1;
         }
     }
 }
@@ -247,7 +278,6 @@ pub fn time_pick_keyboard(
     InlineKeyboardMarkup::new(keyboard)
 }
 
-#[allow(clippy::cast_possible_wrap)]
 #[tracing::instrument(skip_all)]
 pub async fn time_pick_callback(
     bot: Bot,
@@ -258,7 +288,7 @@ pub async fn time_pick_callback(
     bot.answer_callback_query(q.id).await?;
 
     let Some(data) = q.data else {
-        tracing::error!("query data is None. should contain string or empty string.");
+        tracing::error!("query data is None. should contain string or empty spaces.");
         bail!("no callback query data")
     };
     let Some(msg) = q.message else {
@@ -277,12 +307,13 @@ pub async fn time_pick_callback(
         return Ok(());
     }
 
-    let chosen_day = naive_date.day0() + 1;
-    let chosen_month = naive_date.month0() + 1;
-    let chosen_year = naive_date.year_ce().1 as i32;
+    // let chosen_day = naive_date.day0() + 1;
+    // let chosen_month = naive_date.month0() + 1;
+    // let chosen_year = naive_date.year_ce().1 as i32;
 
     if data == BACK {
-        let calendar = calendar(chosen_day, chosen_month, chosen_year).map_err(|e| {
+        let now = Utc::now().with_timezone(&Tz::Singapore);
+        let calendar = calendar(now.day(), now.month(), now.year()).map_err(|e| {
             tracing::error!("{e:#?}");
             e
         })?;
@@ -298,11 +329,17 @@ pub async fn time_pick_callback(
             bail!("can't parse remind_time into naive datetime");
         };
         let now = Utc::now().with_timezone(&Tz::Singapore);
-        let chosen_datetime = naive_datetime.and_utc().with_timezone(&Tz::Singapore);
+        let chosen_datetime = naive_datetime
+            .and_utc()
+            .with_timezone(&Tz::Singapore)
+            .with_hour(hour)
+            .ok_or(TimePickError::ChronoNone)?
+            .with_minute(minute)
+            .ok_or(TimePickError::ChronoNone)?;
 
         if chosen_datetime < now {
             tracing::error!("chosen datetime is in the past");
-            let current_time = chosen_datetime.time().format("%H:%M:%S").to_string();
+            let current_time = now.time().format("%H:%M:%S").to_string();
             let text = format!(
                 r"You can't send a message into the past. ❌
 
@@ -339,12 +376,17 @@ What is it that you want me to remind you of?
 Say it in your next message. 🐢"
         );
 
-        bot.edit_message_text(chat.id, *id, text).await?;
+        bot.edit_message_text(chat.id, *id, text)
+            .reply_markup(InlineKeyboardMarkup::new(vec![vec![
+                InlineKeyboardButton::callback("Back", CHANGE_TIME),
+            ]]))
+            .await?;
     } else {
         let time_select: TimeSelect = match data.try_into() {
             Ok(x) => x,
             Err(e) => {
                 tracing::error!(e);
+                expired_callback_msg(bot, chat.clone(), *id).await?;
                 bail!("can't parse data into TimeSelect");
             }
         };
@@ -381,4 +423,70 @@ Say it in your next message. 🐢"
             .await?;
     }
     Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn change_time_callback(
+    q: CallbackQuery,
+    bot: Bot,
+    callback: CallbackDialogue,
+    date_time: DateTime<Tz>,
+) -> anyhow::Result<()> {
+    bot.answer_callback_query(q.id).await?;
+    let Some(Message { id, chat, .. }) = q.message else {
+        tracing::error!("no message data from telegram");
+        bail!("no query message data");
+    };
+    let chosen_hour = date_time.hour();
+    let chosen_minute = date_time.minute();
+    let Ok(remind_time) = RemindTime::new(chosen_hour, chosen_minute) else {
+        bail!("can't parse datetime");
+    };
+
+    let naive_date = date_time.date_naive();
+
+    callback
+        .update(CallbackState::RemindDateTime {
+            date: naive_date,
+            time: remind_time.clone(),
+        })
+        .await?;
+
+    let chosen_month = naive_date.month0() + 1;
+    let chosen_day = naive_date.day0() + 1;
+    let chosen_year = naive_date.year_ce().1;
+    let text = format!(
+        r"You have chosen: 
+
+year: {chosen_year}
+month: {chosen_month} 
+day: {chosen_day}
+
+Now, let's choose the time. 🐢
+The time is in 24 hours format."
+    );
+
+    let time_pick = time_pick_keyboard(
+        remind_time.tenth_hour,
+        remind_time.hour,
+        remind_time.tenth_minute,
+        remind_time.minute,
+    );
+    bot.edit_message_text(chat.id, id, text)
+        .reply_markup(time_pick)
+        .await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn math() {
+        let wow = 534;
+
+        let zzz = wow / 10;
+        println!("{zzz}");
+        let yyy = wow % 10;
+        println!("{yyy}");
+    }
 }
