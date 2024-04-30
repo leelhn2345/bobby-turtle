@@ -9,7 +9,8 @@ mod time_pick;
 use std::sync::OnceLock;
 
 use anyhow::{bail, Result};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate};
+use chrono_tz::Tz;
 use teloxide::{
     dispatching::{
         dialogue::{Dialogue, InMemStorage},
@@ -54,6 +55,9 @@ pub enum CallbackState {
     RemindDateTime {
         date: NaiveDate,
         time: RemindTime,
+    },
+    ConfirmDateTime {
+        date_time: DateTime<Tz>,
     },
 }
 
@@ -107,6 +111,10 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
             Update::filter_message()
                 .enter_dialogue::<Message, InMemStorage<ChatState>, ChatState>()
                 .enter_dialogue::<Message, InMemStorage<CallbackState>, CallbackState>()
+                .branch(
+                    dptree::case![CallbackState::ConfirmDateTime { date_time }]
+                        .endpoint(|| async { Ok(()) }),
+                )
                 .branch(
                     dptree::entry()
                         .filter_command::<commands::Command>()

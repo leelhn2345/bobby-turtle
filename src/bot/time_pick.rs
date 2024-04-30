@@ -1,5 +1,6 @@
 use anyhow::bail;
-use chrono::{Datelike, NaiveDate};
+use chrono::{Datelike, NaiveDate, Timelike, Utc};
+use chrono_tz::Tz;
 use teloxide::{
     payloads::EditMessageTextSetters,
     requests::Requester,
@@ -75,10 +76,10 @@ impl TryFrom<String> for TimeSelect {
 
 #[derive(Clone, Debug)]
 pub struct RemindTime {
-    pub tenth_hour: u8,
-    pub hour: u8,
-    pub tenth_minute: u8,
-    pub minute: u8,
+    pub tenth_hour: u32,
+    pub hour: u32,
+    pub tenth_minute: u32,
+    pub minute: u32,
 }
 
 impl Default for RemindTime {
@@ -198,10 +199,10 @@ impl RemindTime {
 
 #[tracing::instrument(skip_all)]
 pub fn time_pick_keyboard(
-    tenth_hour: u8,
-    hour: u8,
-    tenth_minute: u8,
-    minute: u8,
+    tenth_hour: u32,
+    hour: u32,
+    tenth_minute: u32,
+    minute: u32,
 ) -> InlineKeyboardMarkup {
     let up_arrow: &str = "↑";
 
@@ -289,7 +290,56 @@ pub async fn time_pick_callback(
             .reply_markup(calendar)
             .await?;
     } else if data == NEXT {
-        // TODO:convert remindtime to naivetime
+        let hour = remind_time.tenth_hour * 10 + remind_time.hour;
+        let minute = remind_time.tenth_minute * 10 + remind_time.minute;
+
+        let Some(naive_datetime) = naive_date.and_hms_opt(hour, minute, 0) else {
+            tracing::error!("can't parse {remind_time:#?} into naive datetime");
+            bail!("can't parse remind_time into naive datetime");
+        };
+        let now = Utc::now().with_timezone(&Tz::Singapore);
+        let chosen_datetime = naive_datetime.and_utc().with_timezone(&Tz::Singapore);
+
+        if chosen_datetime < now {
+            tracing::error!("chosen datetime is in the past");
+            let current_time = chosen_datetime.time().format("%H:%M:%S").to_string();
+            let text = format!(
+                r"You can't send a message into the past. ❌
+
+Messages should be after this instant.
+The current time is {current_time}."
+            );
+            bot.send_message(chat.id, text).await?;
+
+            bail!("chosen datetime can't be before this current instant");
+        }
+
+        callback
+            .update(CallbackState::ConfirmDateTime {
+                date_time: chosen_datetime,
+            })
+            .await?;
+
+        let chosen_year = chosen_datetime.year();
+        let chosen_month = chosen_datetime.month();
+        let chosen_day = chosen_datetime.day();
+        let chosen_hour = chosen_datetime.hour();
+        let chosen_minute = chosen_datetime.minute();
+
+        let text = format!(
+            r"You have chosen:
+
+year: {chosen_year}
+month: {chosen_month} 
+day: {chosen_day}
+hour: {chosen_hour}
+minute: {chosen_minute}
+
+What is it that you want me to remind you of?
+Say it in your next message. 🐢"
+        );
+
+        bot.edit_message_text(chat.id, *id, text).await?;
     } else {
         let time_select: TimeSelect = match data.try_into() {
             Ok(x) => x,
