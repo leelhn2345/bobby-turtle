@@ -1,9 +1,14 @@
 mod greetings;
+mod normal_reminder;
+
 use sqlx::PgPool;
 use teloxide::Bot;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 
-use crate::{jobs::greetings::get_greetings, settings::stickers::Stickers};
+use crate::{
+    jobs::{greetings::get_greetings, normal_reminder::get_normal_reminders},
+    settings::stickers::Stickers,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum CronJobError {
@@ -28,10 +33,17 @@ pub async fn init_scheduler(
     pool: &PgPool,
 ) -> Result<JobScheduler, CronJobError> {
     let scheduler = JobScheduler::new().await?;
-    let greeting_jobs = get_greetings(bot, stickers, pool).await.map_err(|e| {
+    let mut greeting_jobs = get_greetings(bot, stickers, pool).await.map_err(|e| {
         tracing::error!(error = %e);
         e
     })?;
+    let mut remind_jobs = get_normal_reminders(bot, pool).await.map_err(|e| {
+        tracing::error!(error = %e);
+        e
+    })?;
+
+    greeting_jobs.append(&mut remind_jobs);
+
     for job in greeting_jobs {
         tokio::spawn(add_job(scheduler.clone(), job));
     }
