@@ -1,0 +1,4 @@
+ALTER TABLE jobs_one_off
+ALTER COLUMN due
+SET
+  NOT NULL;
