@@ -94,9 +94,7 @@ pub async fn one_off_job_callback(
         bail!("no telegram message data")
     };
 
-    let username = if let Some(x) = chat.username() {
-        x.to_owned()
-    } else {
+    let Some(username) = q.from.username else {
         tracing::warn!("no username given for this reminder text");
         bail!("wtf");
     };
