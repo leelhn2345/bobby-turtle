@@ -99,8 +99,8 @@ mod test {
         let instant = std::time::Instant::now()
             .checked_add(std::time::Duration::from_secs(2))
             .unwrap();
-        let job = Job::new_one_shot_at_instant(instant, |_uuid, _lock| {
-            Box::pin(async move { println!("I run once after 20 seconds") });
+        let job = Job::new_one_shot_at_instant_async(instant, |_uuid, _lock| {
+            Box::pin(async move { println!("I run once after 20 seconds") })
         })
         .unwrap();
         scheduler.add(job).await.unwrap();

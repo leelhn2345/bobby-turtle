@@ -317,6 +317,7 @@ pub async fn time_pick_callback(
             tracing::error!("{e:#?}");
             e
         })?;
+        callback.update(CallbackState::RemindDate).await?;
         bot.edit_message_text(chat.id, *id, DATE_PICK_MSG)
             .reply_markup(calendar)
             .await?;
@@ -332,6 +333,10 @@ pub async fn time_pick_callback(
         let chosen_datetime = naive_datetime
             .and_utc()
             .with_timezone(&Tz::Singapore)
+            .with_month(naive_datetime.month())
+            .ok_or(TimePickError::ChronoNone)?
+            .with_day(naive_datetime.day())
+            .ok_or(TimePickError::ChronoNone)?
             .with_hour(hour)
             .ok_or(TimePickError::ChronoNone)?
             .with_minute(minute)

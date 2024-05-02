@@ -94,6 +94,13 @@ pub async fn one_off_job_callback(
         bail!("no telegram message data")
     };
 
+    let username = if let Some(x) = chat.username() {
+        x.to_owned()
+    } else {
+        tracing::warn!("no username given for this reminder text");
+        bail!("wtf");
+    };
+
     let now = Utc::now().with_timezone(&Tz::Singapore);
     if date_time < now {
         tracing::error!("chosen datetime is in the past");
@@ -140,21 +147,70 @@ Say it in your next message. 🐢"
                 .await?;
         }
         JOB_TEXT_CONFIRM => {
-            let time_delta = date_time - Utc::now().with_timezone(&Tz::Singapore);
+            let now = Utc::now().with_timezone(&Tz::Singapore);
+            tracing::debug!("{date_time:#?}");
+            tracing::debug!("{now:#?}");
+            let time_delta = date_time - now;
             let time_delta_secs = time_delta.num_seconds();
+            tracing::debug!("{time_delta_secs} seconds");
             let seconds = u64::from_ne_bytes(time_delta_secs.to_ne_bytes());
+            tracing::debug!("seconds is {seconds}");
 
             let bot_clone = bot.clone();
             let text_clone = msg_text.clone();
+            let pool_clone = pool.clone();
+            let username_clone = username.clone();
             let job = Job::new_one_shot_async(Duration::from_secs(seconds), move |_, _| {
                 let bot = bot_clone.clone();
                 let text = text_clone.clone();
+                let pool = pool_clone.clone();
+                let username = username_clone.clone();
                 Box::pin(async move {
+                    let text = format!(
+                        r"To: @{username}
+
+{text}"
+                    );
                     if let Err(e) = bot.send_message(chat.id, text).await {
                         tracing::error!("error sending one-off-job {e:#?}");
                     }
+                    if let Err(e) = sqlx::query!(
+                        r#"UPDATE jobs_one_off 
+                         SET 
+                         completed = $1
+                         WHERE 
+                         target = $2
+                         and due = $3
+                         and username = $4
+                         "#,
+                        true,
+                        chat.id.0,
+                        date_time,
+                        username
+                    )
+                    .execute(&pool)
+                    .await
+                    {
+                        tracing::error!("error updating completed one_off_job in database: {e:#?}");
+                    }
                 })
             })?;
+            let job_id = job.guid();
+            sqlx::query!(
+                r#"INSERT INTO jobs_one_off
+            (target, job_id, type, due, completed, message, username)
+            VALUES
+            ($1, $2, $3, $4, $5, $6, $7)"#,
+                chat.id.0,
+                job_id,
+                "normal",
+                date_time,
+                false,
+                msg_text,
+                username
+            )
+            .execute(&pool)
+            .await?;
             sched.add(job).await?;
 
             bot.edit_message_text(
