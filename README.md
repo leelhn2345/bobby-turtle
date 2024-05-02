@@ -20,7 +20,12 @@ A virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
 
 ## Features
 
-- cron-job
+- reminder
+
+
+https://github.com/leelhn2345/turtle-bot/assets/64735315/5a084dca-fb8d-4ed8-ac0d-78bfb556413c
+
+
 - chatgpt integration
 
 ## Usage
