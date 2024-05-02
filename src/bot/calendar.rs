@@ -267,8 +267,8 @@ pub async fn calendar_callback(
         send_prev_or_next_month(naive_next_month, chat, id, bot).await?;
     } else if NaiveDate::parse_from_str(&data, "%d-%m-%Y").is_ok() {
         let naive_date = NaiveDate::parse_from_str(&data, "%d-%m-%Y")?;
-        let chosen_day = naive_date.day0() + 1;
         let chosen_month = naive_date.month0() + 1;
+        let chosen_day = naive_date.day0() + 1;
         let chosen_year = naive_date.year_ce().1;
         let text = format!(
             r"You have chosen: 
@@ -327,7 +327,6 @@ The time is in 24 hours format."
     Ok(())
 }
 
-#[allow(clippy::cast_possible_wrap)]
 async fn send_prev_or_next_month(
     d: NaiveDate,
     chat: Chat,
@@ -337,7 +336,7 @@ async fn send_prev_or_next_month(
     let naive_day = d.day0() + 1;
     let naive_month = d.month0() + 1;
     let ce_year_of_naive_month = d.year_ce();
-    let naive_year = ce_year_of_naive_month.1 as i32;
+    let naive_year = i32::from_ne_bytes(ce_year_of_naive_month.1.to_ne_bytes());
     if !ce_year_of_naive_month.0 {
         tracing::error!("year of wrong era - {}", naive_year);
         return Err(CalendarError::WrongEra.into());

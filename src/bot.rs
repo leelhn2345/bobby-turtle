@@ -2,6 +2,7 @@ mod calendar;
 mod chatroom;
 mod commands;
 mod handlers;
+mod job_text;
 mod member;
 mod occurence;
 mod time_pick;
@@ -9,7 +10,8 @@ mod time_pick;
 use std::sync::OnceLock;
 
 use anyhow::{bail, Result};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate};
+use chrono_tz::Tz;
 use teloxide::{
     dispatching::{
         dialogue::{Dialogue, InMemStorage},
@@ -28,9 +30,10 @@ use self::{
     calendar::calendar_callback,
     chatroom::ChatRoom,
     handlers::{group_title_change, is_not_group_chat},
+    job_text::{one_off_job_callback, register_job_text},
     member::{handle_me_leave, i_got_added, i_got_removed},
     occurence::occurence_callback,
-    time_pick::{time_pick_callback, RemindTime},
+    time_pick::{change_time_callback, time_pick_callback, RemindTime},
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
@@ -54,6 +57,13 @@ pub enum CallbackState {
     RemindDateTime {
         date: NaiveDate,
         time: RemindTime,
+    },
+    ConfirmDateTime {
+        date_time: DateTime<Tz>,
+    },
+    ConfirmOneOffJob {
+        date_time: DateTime<Tz>,
+        msg_text: String,
     },
 }
 
@@ -108,6 +118,10 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .enter_dialogue::<Message, InMemStorage<ChatState>, ChatState>()
                 .enter_dialogue::<Message, InMemStorage<CallbackState>, CallbackState>()
                 .branch(
+                    dptree::case![CallbackState::ConfirmDateTime { date_time }]
+                        .endpoint(register_job_text),
+                )
+                .branch(
                     dptree::entry()
                         .filter_command::<commands::Command>()
                         .endpoint(commands::Command::answer),
@@ -140,6 +154,18 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                     dptree::case![CallbackState::RemindDateTime { date, time }]
                         .endpoint(time_pick_callback),
                 )
-                .branch(dptree::case![CallbackState::Expired].endpoint(expired_callback_endpt)),
+                .branch(
+                    dptree::case![CallbackState::ConfirmDateTime { date_time }]
+                        .endpoint(change_time_callback),
+                )
+                .branch(
+                    dptree::case![CallbackState::ConfirmOneOffJob {
+                        date_time,
+                        msg_text
+                    }]
+                    .endpoint(one_off_job_callback),
+                )
+                .branch(dptree::case![CallbackState::Expired].endpoint(expired_callback_endpt))
+                .branch(dptree::endpoint(expired_callback_endpt)),
         )
 }

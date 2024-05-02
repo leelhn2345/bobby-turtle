@@ -1,0 +1,12 @@
+BEGIN;
+
+ALTER TABLE jobs_one_off
+DROP COLUMN due;
+
+ALTER TABLE jobs_one_off
+ADD COLUMN username TEXT NOT NULL;
+
+ALTER TABLE jobs_one_off
+ADD COLUMN due TIMESTAMPTZ;
+
+COMMIT;

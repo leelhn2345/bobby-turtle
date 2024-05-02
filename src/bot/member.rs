@@ -68,7 +68,6 @@ pub async fn handle_me_leave(msg: Message, pool: PgPool) -> Result<()> {
 }
 
 #[tracing::instrument(name = "new member", skip_all)]
-#[allow(clippy::cast_possible_wrap)]
 pub async fn handle_member_join(bot: Bot, msg: Message, stickers: Stickers) -> Result<()> {
     let new_users: Option<Vec<User>> = msg
         .new_chat_members()

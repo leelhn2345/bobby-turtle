@@ -1,7 +1,7 @@
-# [Telegram Bot](https://t.me/baldyturtlebot)
+# Telegram Bot
 
 <!--toc:start-->
-- [[Telegram Bot](https://t.me/baldyturtlebot)](#telegram-bothttpstmebaldyturtlebot)
+- [Telegram Bot](#telegram-bot)
   - [Features](#features)
   - [Usage](#usage)
   - [Development](#development)
@@ -13,7 +13,7 @@
     - [Prod Env](#prod-env)
 <!--toc:end-->
 
-A virtual turtle pet on telegram.
+A virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
 
 > [!WARNING]
 > This bot is under **active development**.
