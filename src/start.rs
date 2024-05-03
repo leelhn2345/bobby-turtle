@@ -1,75 +1,45 @@
-use std::{convert::Infallible, time::Duration};
+use std::{convert::Infallible, future::Future, net::SocketAddr, time::Duration};
 
 use anyhow::Context;
 use async_openai::{config::OpenAIConfig, Client};
 
+use axum::Router;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use teloxide::{
     dispatching::{dialogue::InMemStorage, Dispatcher},
     dptree,
     error_handlers::LoggingErrorHandler,
-    update_listeners::{webhooks, UpdateListener},
+    stop::StopToken,
+    update_listeners::{
+        webhooks::{self, Options},
+        UpdateListener,
+    },
     Bot,
 };
+use tokio::signal;
 use tokio_cron_scheduler::JobScheduler;
 
 use crate::{
     bot::{bot_handler, init_bot_details, CallbackState, ChatState},
     jobs::init_scheduler,
     routes::app_router,
-    settings::{database::DatabaseSettings, environment::Environment, Settings},
+    settings::{app::AppSettings, database::DatabaseSettings, environment::Environment, Settings},
 };
 
 async fn start_server(
-    bot: Bot,
-    settings: &Settings,
-    env: Environment,
-) -> impl UpdateListener<Err = std::convert::Infallible> {
-    let address = format!(
-        "{}:{}",
-        settings.application.host, settings.application.port
-    )
-    .parse()
-    .context(format!(
-        "{}:{}",
-        settings.application.host, settings.application.port,
-    ))
-    .expect("unable to parse into address url");
-
-    let url = format!("{}/webhook", settings.application.public_url)
-        .parse()
-        .context(settings.application.public_url.to_string())
-        .expect("unable to parse into webhook url");
-
-    let mut options = webhooks::Options::new(address, url);
-
-    if env == Environment::Local {
-        options = options.drop_pending_updates();
-        tracing::info!(
-            "app started in http://localhost:{}",
-            settings.application.port
-        );
-    }
-
-    let (mut listener, stop_flag, router) = webhooks::axum_to_router(bot, options)
-        .await
-        .map_err(|e| tracing::error!("{e:#?}"))
-        .expect("unable to get listener");
-
+    stop_token: StopToken,
+    stop_flag: impl Future<Output = ()> + Send,
+    router: Router,
+    address: SocketAddr,
+) {
     let app = app_router(router);
 
-    let stop_token = listener.stop_token();
-
-    tokio::spawn(async move {
-        axum::Server::bind(&address)
-            .serve(app.into_make_service())
-            .with_graceful_shutdown(stop_flag)
-            .await
-            .map_err(|_| stop_token.stop())
-            .expect("axum server error");
-    });
-
-    listener
+    axum::Server::bind(&address)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(stop_flag)
+        .await
+        .map_err(|_| stop_token.stop())
+        .expect("axum server error");
 }
 
 fn get_connection_pool(config: &DatabaseSettings) -> PgPool {
@@ -78,26 +48,63 @@ fn get_connection_pool(config: &DatabaseSettings) -> PgPool {
         .connect_lazy_with(config.with_db())
 }
 
+fn get_webhook_options(settings: &AppSettings, env: &Environment) -> Options {
+    let address = format!("{}:{}", settings.host, settings.port)
+        .parse()
+        .context(format!("{}:{}", settings.host, settings.port,))
+        .expect("unable to parse into address url");
+
+    let url = format!("{}/webhook", settings.public_url)
+        .parse()
+        .context(settings.public_url.to_string())
+        .expect("unable to parse into webhook url");
+
+    let mut options = webhooks::Options::new(address, url);
+
+    if *env == Environment::Local {
+        options = options.drop_pending_updates();
+        tracing::info!("app started in http://localhost:{}", settings.port);
+    }
+
+    options
+}
+
 pub async fn start_app(settings: Settings, env: Environment) {
     let tele_bot = Bot::from_env();
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
 
-    let listener = start_server(tele_bot.clone(), &settings, env).await;
-
     let sched = init_scheduler(&tele_bot, &settings.stickers, &connection_pool)
         .await
         .expect("cannot initialize scheduler");
 
-    Box::pin(start_bot(
+    let options = get_webhook_options(&settings.application, &env);
+
+    let Options { address, .. } = options;
+
+    let (mut listener, stop_flag, router) = webhooks::axum_to_router(tele_bot.clone(), options)
+        .await
+        .map_err(|e| tracing::error!("{e:#?}"))
+        .expect("unable to get listener");
+
+    let stop_token = listener.stop_token();
+
+    let axum_server = tokio::spawn(start_server(stop_token, stop_flag, router, address));
+
+    let bot_app = start_bot(
         tele_bot,
         listener,
         settings,
         chatgpt,
         connection_pool,
         sched,
-    ))
-    .await;
+    );
+
+    tokio::select! {
+        _ = signal::ctrl_c() => tracing::info!("ctrl-c received"),
+        _o = axum_server => tracing::info!("web server has shutdown."),
+        _o = bot_app => tracing::info!("telegram bot app has shutdown."),
+    }
 }
 
 async fn start_bot(
