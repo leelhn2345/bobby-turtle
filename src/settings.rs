@@ -1,4 +1,4 @@
-mod app;
+pub mod app;
 pub mod database;
 pub mod environment;
 pub mod stickers;
