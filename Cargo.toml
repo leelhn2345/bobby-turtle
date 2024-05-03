@@ -34,6 +34,9 @@ version = "0.7.4"
 default-features = false
 features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros"]
 
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 strip = true
