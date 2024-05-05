@@ -13,7 +13,7 @@ use crate::bot::expired_callback_msg;
 use super::{
     occurence::{occurence_keyboard, OCCURENCE_DESCRIPTION},
     time_pick::{time_pick_keyboard, RemindTime},
-    CallbackDialogue, CallbackState,
+    CallbackPage, CallbackState,
 };
 
 const CURRENT_MONTH: &str = "Current";
@@ -244,7 +244,7 @@ fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
 pub async fn calendar_callback(
     bot: Bot,
     q: CallbackQuery,
-    callback: CallbackDialogue,
+    callback: CallbackState,
 ) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
 
@@ -283,7 +283,7 @@ The time is in 24 hours format."
         let remind_time = RemindTime::default();
 
         callback
-            .update(CallbackState::RemindDateTime {
+            .update(CallbackPage::RemindDateTime {
                 date: naive_date,
                 time: remind_time.clone(),
             })
@@ -301,7 +301,7 @@ The time is in 24 hours format."
     } else {
         match data.as_ref() {
             OCCURENCE => {
-                callback.update(CallbackState::Occcurence).await?;
+                callback.update(CallbackPage::Occcurence).await?;
                 bot.edit_message_text(chat.id, id, OCCURENCE_DESCRIPTION)
                     .parse_mode(teloxide::types::ParseMode::Markdown)
                     .reply_markup(occurence_keyboard())

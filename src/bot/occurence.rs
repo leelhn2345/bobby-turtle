@@ -12,7 +12,7 @@ use crate::{bot::expired_callback_msg, settings::stickers::Stickers};
 
 use super::{
     calendar::{calendar, DATE_PICK_MSG},
-    send_sticker, CallbackDialogue, CallbackState,
+    send_sticker, CallbackPage, CallbackState,
 };
 
 const ONE_OFF: &str = "One-Off";
@@ -74,7 +74,7 @@ pub async fn pick_occurence(bot: Bot, chat: Chat) -> anyhow::Result<()> {
 pub async fn occurence_callback(
     bot: Bot,
     q: CallbackQuery,
-    callback: CallbackDialogue,
+    callback: CallbackState,
     stickers: Stickers,
 ) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
@@ -97,7 +97,7 @@ pub async fn occurence_callback(
         Occurence::OneOff => {
             let now = Utc::now().with_timezone(&Tz::Singapore);
             let calendar = calendar(now.day(), now.month(), now.year())?;
-            callback.update(CallbackState::RemindDate).await?;
+            callback.update(CallbackPage::RemindDate).await?;
             tracing::debug!("changed callback state to date");
             bot.edit_message_text(chat.id, id, DATE_PICK_MSG)
                 .reply_markup(calendar)

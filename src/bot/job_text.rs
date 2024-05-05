@@ -12,7 +12,7 @@ use teloxide::{
 };
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use super::{expired_callback_msg, time_pick::CHANGE_TIME, CallbackDialogue, CallbackState};
+use super::{expired_callback_msg, time_pick::CHANGE_TIME, CallbackPage, CallbackState};
 
 pub const JOB_TEXT_BACK: &str = "Back";
 pub const JOB_TEXT_CONFIRM: &str = "Confirm";
@@ -30,7 +30,7 @@ pub async fn register_job_text(
     bot: Bot,
     msg: Message,
     chosen_datetime: DateTime<Tz>,
-    callback: CallbackDialogue,
+    callback: CallbackState,
 ) -> anyhow::Result<()> {
     let Some(text) = msg.text() else {
         bail!("no text")
@@ -59,7 +59,7 @@ text:
     );
 
     callback
-        .update(CallbackState::ConfirmOneOffJob {
+        .update(CallbackPage::ConfirmOneOffJob {
             date_time: chosen_datetime,
             msg_text: text.to_string(),
         })
@@ -78,7 +78,7 @@ text:
 pub async fn one_off_job_callback(
     bot: Bot,
     q: CallbackQuery,
-    callback: CallbackDialogue,
+    callback: CallbackState,
     (date_time, msg_text): (DateTime<Tz>, String),
     pool: PgPool,
     sched: JobScheduler,
@@ -117,7 +117,7 @@ The current time is {current_time}."
     match data.as_ref() {
         JOB_TEXT_BACK => {
             callback
-                .update(CallbackState::ConfirmDateTime { date_time })
+                .update(CallbackPage::ConfirmDateTime { date_time })
                 .await?;
             let chosen_year = date_time.year();
             let chosen_month = date_time.month();

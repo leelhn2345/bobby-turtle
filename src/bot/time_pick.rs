@@ -12,7 +12,7 @@ use crate::bot::expired_callback_msg;
 
 use super::{
     calendar::{calendar, DATE_PICK_MSG},
-    CallbackDialogue, CallbackState,
+    CallbackPage, CallbackState,
 };
 
 const BACK: &str = "Back";
@@ -282,7 +282,7 @@ pub fn time_pick_keyboard(
 pub async fn time_pick_callback(
     bot: Bot,
     q: CallbackQuery,
-    callback: CallbackDialogue,
+    callback: CallbackState,
     (naive_date, remind_time): (NaiveDate, RemindTime),
 ) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
@@ -317,7 +317,7 @@ pub async fn time_pick_callback(
             tracing::error!("{e:#?}");
             e
         })?;
-        callback.update(CallbackState::RemindDate).await?;
+        callback.update(CallbackPage::RemindDate).await?;
         bot.edit_message_text(chat.id, *id, DATE_PICK_MSG)
             .reply_markup(calendar)
             .await?;
@@ -357,7 +357,7 @@ The current time is {current_time}."
         }
 
         callback
-            .update(CallbackState::ConfirmDateTime {
+            .update(CallbackPage::ConfirmDateTime {
                 date_time: chosen_datetime,
             })
             .await?;
@@ -410,7 +410,7 @@ Say it in your next message. 🐢"
         tracing::debug!("{remind_time:#?}");
 
         callback
-            .update(CallbackState::RemindDateTime {
+            .update(CallbackPage::RemindDateTime {
                 date: naive_date,
                 time: remind_time.clone(),
             })
@@ -434,7 +434,7 @@ Say it in your next message. 🐢"
 pub async fn change_time_callback(
     q: CallbackQuery,
     bot: Bot,
-    callback: CallbackDialogue,
+    callback: CallbackState,
     date_time: DateTime<Tz>,
 ) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
@@ -451,7 +451,7 @@ pub async fn change_time_callback(
     let naive_date = date_time.date_naive();
 
     callback
-        .update(CallbackState::RemindDateTime {
+        .update(CallbackPage::RemindDateTime {
             date: naive_date,
             time: remind_time.clone(),
         })

@@ -6,7 +6,7 @@ use teloxide::{requests::Requester, types::Message, utils::command::BotCommands,
 use crate::settings::stickers::Stickers;
 
 use super::{
-    chatroom::ChatRoom, occurence::pick_occurence, send_sticker, BotDialogue, CallbackDialogue,
+    chatroom::ChatRoom, occurence::pick_occurence, send_sticker, BotDialogue, CallbackPage,
     CallbackState, ChatState,
 };
 
@@ -38,7 +38,7 @@ impl Command {
         cmd: Command,
         stickers: Stickers,
         dialogue: BotDialogue,
-        callback: CallbackDialogue,
+        callback: CallbackState,
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
@@ -71,7 +71,7 @@ impl Command {
                 bot.send_message(chat_id, "~ feature coming soon ~").await?;
             }
             Self::Remind => {
-                callback.update(CallbackState::Occcurence).await?;
+                callback.update(CallbackPage::Occcurence).await?;
                 pick_occurence(bot, msg.chat).await?;
             }
         };
