@@ -15,26 +15,25 @@
 
 A virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
 
-> [!WARNING]
-> This bot is under **active development**.
-
 ## Features
 
-- reminder 
+- reminder
 
-https://github.com/leelhn2345/turtle-bot/assets/64735315/f5c66eee-9e05-46b6-9f18-5010eab3d7de
+<https://github.com/leelhn2345/turtle-bot/assets/64735315/f5c66eee-9e05-46b6-9f18-5010eab3d7de>
 
 - chatgpt integration
 
-https://github.com/leelhn2345/turtle-bot/assets/64735315/ca3b868a-e9cf-459d-bac2-3e69e0e517c3
+<https://github.com/leelhn2345/turtle-bot/assets/64735315/ca3b868a-e9cf-459d-bac2-3e69e0e517c3>
 
 ## Usage
 
 Use `/help` in chat.
 
-When **it's not a group chat**, such as direct messages to the bot, the bot will reply to every message.
+When **it's not a group chat**, such as direct messages to the bot, the bot will
+reply to every message.
 
-**In group chats**, use `/chat` for it to reply to every message. Use `/shutup` for the bot to stop responding.
+**In group chats**, use `/chat` for it to reply to every message. Use `/shutup`
+for the bot to stop responding.
 
 ## Development
 
