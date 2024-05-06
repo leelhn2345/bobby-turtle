@@ -20,7 +20,7 @@ use tokio::signal;
 use tokio_cron_scheduler::JobScheduler;
 
 use crate::{
-    bot::{bot_handler, init_bot_details, CallbackPage, ChatState},
+    bot::{bot_handler, callbacks::CallbackPage, init_bot_details, ChatState},
     jobs::init_scheduler,
     routes::app_router,
     settings::{app::AppSettings, database::DatabaseSettings, environment::Environment, Settings},

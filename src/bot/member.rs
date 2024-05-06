@@ -8,7 +8,7 @@ use teloxide::{
     Bot,
 };
 
-use crate::{bot::send_sticker, settings::stickers::Stickers};
+use crate::{bot::sticker::send_sticker, settings::stickers::Stickers};
 
 use super::{chatroom::ChatRoom, BOT_ME};
 

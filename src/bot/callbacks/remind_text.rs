@@ -7,26 +7,53 @@ use sqlx::PgPool;
 use teloxide::{
     payloads::{EditMessageTextSetters, SendMessageSetters},
     requests::Requester,
-    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message},
+    types::{
+        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId,
+    },
     Bot,
 };
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use super::{expired_callback_msg, time_pick::CHANGE_TIME, CallbackPage, CallbackState};
+use super::{expired_callback_msg, time_check, CallbackPage, CallbackState};
 
-pub const JOB_TEXT_BACK: &str = "Back";
-pub const JOB_TEXT_CONFIRM: &str = "Confirm";
+const JOB_TEXT_BACK: &str = "Back";
+const JOB_TEXT_CONFIRM: &str = "Confirm";
+const CHANGE_TIME: &str = "Change Time";
 
-fn job_text_keyboard() -> InlineKeyboardMarkup {
-    let keyboard: Vec<Vec<InlineKeyboardButton>> = vec![vec![
-        InlineKeyboardButton::callback(JOB_TEXT_BACK, JOB_TEXT_BACK),
-        InlineKeyboardButton::callback(JOB_TEXT_CONFIRM, JOB_TEXT_CONFIRM),
-    ]];
+pub async fn remind_text_page(
+    bot: Bot,
+    chat_id: ChatId,
+    msg_id: MessageId,
+    chosen_datetime: DateTime<Tz>,
+) -> anyhow::Result<()> {
+    let chosen_year = chosen_datetime.year();
+    let chosen_month = chosen_datetime.month();
+    let chosen_day = chosen_datetime.day();
+    let chosen_hour = chosen_datetime.hour();
+    let chosen_minute = chosen_datetime.minute();
 
-    InlineKeyboardMarkup::new(keyboard)
+    let text = format!(
+        r"You have chosen:
+
+year: {chosen_year}
+month: {chosen_month} 
+day: {chosen_day}
+hour: {chosen_hour}
+minute: {chosen_minute}
+
+What is it that you want me to remind you of?
+Say it in your next message. 🐢"
+    );
+
+    bot.edit_message_text(chat_id, msg_id, text)
+        .reply_markup(InlineKeyboardMarkup::new(vec![vec![
+            InlineKeyboardButton::callback("Back", CHANGE_TIME),
+        ]]))
+        .await?;
+    Ok(())
 }
 
-pub async fn register_job_text(
+pub async fn confirm_reminder_text(
     bot: Bot,
     msg: Message,
     chosen_datetime: DateTime<Tz>,
@@ -73,12 +100,19 @@ text:
 
     Ok(())
 }
+fn job_text_keyboard() -> InlineKeyboardMarkup {
+    let keyboard: Vec<Vec<InlineKeyboardButton>> = vec![vec![
+        InlineKeyboardButton::callback(JOB_TEXT_BACK, JOB_TEXT_BACK),
+        InlineKeyboardButton::callback(JOB_TEXT_CONFIRM, JOB_TEXT_CONFIRM),
+    ]];
 
-#[tracing::instrument(skip_all)]
-pub async fn one_off_job_callback(
+    InlineKeyboardMarkup::new(keyboard)
+}
+
+pub async fn remind_text_callback(
     bot: Bot,
     q: CallbackQuery,
-    callback: CallbackState,
+    p: CallbackState,
     (date_time, msg_text): (DateTime<Tz>, String),
     pool: PgPool,
     sched: JobScheduler,
@@ -89,7 +123,10 @@ pub async fn one_off_job_callback(
         tracing::error!("query data is None. should contain string or empty string.");
         bail!("no query callback data")
     };
-    let Some(Message { id, chat, .. }) = q.message else {
+    let Some(Message {
+        id: msg_id, chat, ..
+    }) = q.message
+    else {
         tracing::error!("no message data from telegram");
         bail!("no telegram message data")
     };
@@ -100,64 +137,26 @@ pub async fn one_off_job_callback(
     };
 
     let now = Utc::now().with_timezone(&Tz::Singapore);
-    if date_time < now {
-        tracing::error!("chosen datetime is in the past");
-        let current_time = now.time().format("%H:%M:%S").to_string();
-        let text = format!(
-            r"You can't send a message into the past. ❌
 
-Messages should be after this instant.
-The current time is {current_time}."
-        );
-        bot.send_message(chat.id, text).await?;
-
-        bail!("chosen datetime can't be before this current instant");
-    }
+    time_check(&bot, chat.id, date_time, now).await?;
 
     match data.as_ref() {
         JOB_TEXT_BACK => {
-            callback
-                .update(CallbackPage::ConfirmDateTime { date_time })
+            p.update(CallbackPage::ConfirmDateTime { date_time })
                 .await?;
-            let chosen_year = date_time.year();
-            let chosen_month = date_time.month();
-            let chosen_day = date_time.day();
-            let chosen_hour = date_time.hour();
-            let chosen_minute = date_time.minute();
 
-            let text = format!(
-                r"You have chosen:
-
-year: {chosen_year}
-month: {chosen_month} 
-day: {chosen_day}
-hour: {chosen_hour}
-minute: {chosen_minute}
-
-What is it that you want me to remind you of?
-Say it in your next message. 🐢"
-            );
-
-            bot.edit_message_text(chat.id, id, text)
-                .reply_markup(InlineKeyboardMarkup::new(vec![vec![
-                    InlineKeyboardButton::callback("Back", CHANGE_TIME),
-                ]]))
-                .await?;
+            remind_text_page(bot, chat.id, msg_id, date_time).await?;
         }
         JOB_TEXT_CONFIRM => {
-            let now = Utc::now().with_timezone(&Tz::Singapore);
-            tracing::debug!("{date_time:#?}");
-            tracing::debug!("{now:#?}");
             let time_delta = date_time - now;
             let time_delta_secs = time_delta.num_seconds();
-            tracing::debug!("{time_delta_secs} seconds");
             let seconds = u64::from_ne_bytes(time_delta_secs.to_ne_bytes());
-            tracing::debug!("seconds is {seconds}");
 
             let bot_clone = bot.clone();
             let text_clone = msg_text.clone();
             let pool_clone = pool.clone();
             let username_clone = username.clone();
+
             let job = Job::new_one_shot_async(Duration::from_secs(seconds), move |_, _| {
                 let bot = bot_clone.clone();
                 let text = text_clone.clone();
@@ -165,7 +164,7 @@ Say it in your next message. 🐢"
                 let username = username_clone.clone();
                 Box::pin(async move {
                     let text = format!(
-                        r"To: @{username}
+                        r"From: @{username}
 
 {text}"
                     );
@@ -193,6 +192,7 @@ Say it in your next message. 🐢"
                     }
                 })
             })?;
+
             let job_id = job.guid();
             sqlx::query!(
                 r#"INSERT INTO jobs_one_off
@@ -213,28 +213,14 @@ Say it in your next message. 🐢"
 
             bot.edit_message_text(
                 chat.id,
-                id,
-                format!("confirmed 🐢 - your text is {msg_text}"),
+                msg_id,
+                format!("confirmed 🐢 - your message will be sent."),
             )
             .await?;
-            callback.reset().await?;
+            p.reset().await?;
         }
-        _ => expired_callback_msg(bot, chat, id).await?,
+
+        _ => expired_callback_msg(bot, chat.id, msg_id).await?,
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use chrono::{DateTime, Utc};
-    use chrono_tz::Tz;
-
-    #[test]
-    fn zzzzz() {
-        let wow = Utc::now().with_timezone(&Tz::Singapore).to_string();
-        println!("{wow}");
-
-        let hmm = DateTime::parse_from_rfc3339(&wow).unwrap();
-        println!("{hmm}");
-    }
 }

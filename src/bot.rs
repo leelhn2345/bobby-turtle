@@ -1,17 +1,13 @@
-mod calendar;
+pub mod callbacks;
 mod chatroom;
 mod commands;
 mod handlers;
-mod job_text;
 mod member;
-mod occurence;
-mod time_pick;
+pub mod sticker;
 
 use std::sync::OnceLock;
 
-use anyhow::{bail, Result};
-use chrono::{DateTime, NaiveDate};
-use chrono_tz::Tz;
+use anyhow::Result;
 use teloxide::{
     dispatching::{
         dialogue::{Dialogue, InMemStorage},
@@ -19,7 +15,7 @@ use teloxide::{
     },
     dptree::{self, di::DependencyMap, Handler},
     requests::Requester,
-    types::{CallbackQuery, Chat, ChatId, InputFile, Me, Message, MessageId, Update},
+    types::{CallbackQuery, Me, Message, Update},
     utils::command::BotCommands,
     Bot,
 };
@@ -27,13 +23,13 @@ use teloxide::{
 use crate::chat::user_chat;
 
 use self::{
-    calendar::calendar_callback,
+    callbacks::{
+        confirm_reminder_text, date_callback, expired_callback, occurence_callback,
+        remind_text_callback, time_callback, CallbackPage,
+    },
     chatroom::ChatRoom,
     handlers::{group_title_change, is_not_group_chat},
-    job_text::{one_off_job_callback, register_job_text},
     member::{handle_me_leave, i_got_added, i_got_removed},
-    occurence::occurence_callback,
-    time_pick::{change_time_callback, time_pick_callback, RemindTime},
 };
 
 /// feel free to `.unwrap()` once it has been initialized.
@@ -48,27 +44,7 @@ pub enum ChatState {
     Talk,
 }
 
-#[derive(Clone, Default)]
-pub enum CallbackPage {
-    #[default]
-    Expired,
-    Occcurence,
-    RemindDate,
-    RemindDateTime {
-        date: NaiveDate,
-        time: RemindTime,
-    },
-    ConfirmDateTime {
-        date_time: DateTime<Tz>,
-    },
-    ConfirmOneOffJob {
-        date_time: DateTime<Tz>,
-        msg_text: String,
-    },
-}
-
 pub type BotDialogue = Dialogue<ChatState, InMemStorage<ChatState>>;
-pub type CallbackState = Dialogue<CallbackPage, InMemStorage<CallbackPage>>;
 
 pub async fn init_bot_details(bot: &Bot) {
     bot.set_my_commands(commands::Command::bot_commands())
@@ -88,28 +64,6 @@ pub async fn init_bot_details(bot: &Bot) {
     tracing::debug!("{BOT_ME:#?}");
 }
 
-pub async fn send_sticker(bot: &Bot, chat_id: &ChatId, sticker_id: String) -> anyhow::Result<()> {
-    bot.send_sticker(*chat_id, InputFile::file_id(sticker_id))
-        .await?;
-    Ok(())
-}
-
-#[tracing::instrument(skip_all)]
-async fn expired_callback_endpt(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
-    let Some(Message { id, chat, .. }) = q.message else {
-        tracing::error!("no message data from telegram");
-        bail!("no query message")
-    };
-    expired_callback_msg(bot, chat, id).await?;
-    Ok(())
-}
-
-pub async fn expired_callback_msg(bot: Bot, chat: Chat, id: MessageId) -> anyhow::Result<()> {
-    bot.edit_message_text(chat.id, id, "This has expired 😅 🐢🐢🐢")
-        .await?;
-    Ok(())
-}
-
 pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDescription> {
     dptree::entry()
         .inspect(|u: Update| tracing::debug!("{:#?}", u))
@@ -119,7 +73,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                 .enter_dialogue::<Message, InMemStorage<CallbackPage>, CallbackPage>()
                 .branch(
                     dptree::case![CallbackPage::ConfirmDateTime { date_time }]
-                        .endpoint(register_job_text),
+                        .endpoint(confirm_reminder_text),
                 )
                 .branch(
                     dptree::entry()
@@ -149,10 +103,10 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
             Update::filter_callback_query()
                 .enter_dialogue::<CallbackQuery, InMemStorage<CallbackPage>, CallbackPage>()
                 .branch(dptree::case![CallbackPage::Occcurence].endpoint(occurence_callback))
-                .branch(dptree::case![CallbackPage::RemindDate].endpoint(calendar_callback))
+                .branch(dptree::case![CallbackPage::RemindDate].endpoint(date_callback))
                 .branch(
                     dptree::case![CallbackPage::RemindDateTime { date, time }]
-                        .endpoint(time_pick_callback),
+                        .endpoint(time_callback),
                 )
                 .branch(
                     dptree::case![CallbackPage::ConfirmDateTime { date_time }]
@@ -163,9 +117,8 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                         date_time,
                         msg_text
                     }]
-                    .endpoint(one_off_job_callback),
+                    .endpoint(remind_text_callback),
                 )
-                .branch(dptree::case![CallbackPage::Expired].endpoint(expired_callback_endpt))
-                .branch(dptree::endpoint(expired_callback_endpt)),
+                .branch(dptree::endpoint(expired_callback)),
         )
 }
