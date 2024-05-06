@@ -1,0 +1,7 @@
+[package]
+name = "my_server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+my_bot = { version = "0.1.0", path = "../my_bot" }

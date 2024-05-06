@@ -1,11 +1,15 @@
-[package]
-name = "telebot"
+[workspace]
+members = ["telebot", "my_bot", "my_server"]
+default-members = ["telebot"]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.82"
 async-openai = "0.20.0"
 axum = "0.6.20"
@@ -29,14 +33,20 @@ utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 utoipa_auto_discovery = "0.3.0"
 uuid = { version = "1.8.0", features = ["v4"] }
 
-[dependencies.sqlx]
+[workspace.dependencies.sqlx]
 version = "0.7.4"
 default-features = false
 features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros"]
 
-[profile.dev.package.sqlx-macros]
-opt-level = 3
+[profile.dev.package]
+sqlx-macros.opt-level = 3
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch,
+# and we don't rely on it for debugging that much.
+debug = 0
+panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
-strip = true
+debug = 0

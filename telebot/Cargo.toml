@@ -1,0 +1,6 @@
+[package]
+name = "telebot"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
