@@ -4,16 +4,23 @@ use chrono_tz::Tz;
 use teloxide::{
     payloads::{EditMessageTextSetters, SendMessageSetters},
     requests::Requester,
-    types::{CallbackQuery, Chat, InlineKeyboardButton, InlineKeyboardMarkup, Message, ParseMode},
+    types::{
+        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId,
+        ParseMode,
+    },
     Bot,
 };
 
-use crate::{bot::expired_callback_msg, settings::stickers::Stickers};
-
-use super::{
-    calendar::{calendar, DATE_PICK_MSG},
-    send_sticker, CallbackDialogue, CallbackState,
+use crate::{
+    bot::{
+        callbacks::{date::date_page, expired::expired_callback_msg},
+        sticker::send_sticker,
+        CallbackPage,
+    },
+    settings::stickers::Stickers,
 };
+
+use super::CallbackState;
 
 const ONE_OFF: &str = "One-Off";
 const RECURRING: &str = "Recurring";
@@ -21,11 +28,11 @@ pub const OCCURENCE_DESCRIPTION: &str = r"**One-Off** refers to a reminder that 
 
 **Recurring** refers to a reminder that appears at interval.";
 
-pub enum Occurence {
+pub enum OccurenceState {
     OneOff,
     Recurring,
 }
-impl Occurence {
+impl OccurenceState {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::OneOff => ONE_OFF,
@@ -33,7 +40,7 @@ impl Occurence {
         }
     }
 }
-impl TryFrom<String> for Occurence {
+impl TryFrom<String> for OccurenceState {
     type Error = String;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -47,12 +54,15 @@ impl TryFrom<String> for Occurence {
     }
 }
 
-pub fn occurence_keyboard() -> InlineKeyboardMarkup {
+fn occurence_keyboard() -> InlineKeyboardMarkup {
     let buttons: Vec<Vec<InlineKeyboardButton>> = vec![vec![
-        InlineKeyboardButton::callback(Occurence::OneOff.as_str(), Occurence::OneOff.as_str()),
         InlineKeyboardButton::callback(
-            Occurence::Recurring.as_str(),
-            Occurence::Recurring.as_str(),
+            OccurenceState::OneOff.as_str(),
+            OccurenceState::OneOff.as_str(),
+        ),
+        InlineKeyboardButton::callback(
+            OccurenceState::Recurring.as_str(),
+            OccurenceState::Recurring.as_str(),
         ),
     ]];
 
@@ -61,20 +71,29 @@ pub fn occurence_keyboard() -> InlineKeyboardMarkup {
 
 #[allow(deprecated)]
 #[tracing::instrument(skip_all)]
-pub async fn pick_occurence(bot: Bot, chat: Chat) -> anyhow::Result<()> {
+pub async fn new_occurence_page(bot: Bot, chat_id: ChatId) -> anyhow::Result<()> {
     let keyboard = occurence_keyboard();
-    bot.send_message(chat.id, OCCURENCE_DESCRIPTION)
+    bot.send_message(chat_id, OCCURENCE_DESCRIPTION)
         .parse_mode(ParseMode::Markdown)
         .reply_markup(keyboard)
         .await?;
     Ok(())
 }
 
+#[allow(deprecated)]
 #[tracing::instrument(skip_all)]
+pub async fn occurence_page(bot: Bot, chat_id: ChatId, msg_id: MessageId) -> anyhow::Result<()> {
+    let keyboard = occurence_keyboard();
+    bot.edit_message_text(chat_id, msg_id, OCCURENCE_DESCRIPTION)
+        .parse_mode(ParseMode::Markdown)
+        .reply_markup(keyboard)
+        .await?;
+    Ok(())
+}
 pub async fn occurence_callback(
     bot: Bot,
     q: CallbackQuery,
-    callback: CallbackDialogue,
+    p: CallbackState,
     stickers: Stickers,
 ) -> anyhow::Result<()> {
     bot.answer_callback_query(q.id).await?;
@@ -86,27 +105,24 @@ pub async fn occurence_callback(
         tracing::error!("no message data from telegram");
         bail!("no message data")
     };
-    let occurence = match Occurence::try_from(data) {
+    let occurence = match OccurenceState::try_from(data) {
         Err(e) => {
-            expired_callback_msg(bot, chat, id).await?;
+            expired_callback_msg(bot, chat.id, id).await?;
             bail!("{e}");
         }
         Ok(x) => x,
     };
     match occurence {
-        Occurence::OneOff => {
+        OccurenceState::OneOff => {
             let now = Utc::now().with_timezone(&Tz::Singapore);
-            let calendar = calendar(now.day(), now.month(), now.year())?;
-            callback.update(CallbackState::RemindDate).await?;
+            p.update(CallbackPage::RemindDate).await?;
             tracing::debug!("changed callback state to date");
-            bot.edit_message_text(chat.id, id, DATE_PICK_MSG)
-                .reply_markup(calendar)
-                .await?;
+            date_page(bot, chat.id, id, now.day(), now.month(), now.year()).await?;
         }
-        Occurence::Recurring => {
+        OccurenceState::Recurring => {
             bot.delete_message(chat.id, id).await?;
             send_sticker(&bot, &chat.id, stickers.coming_soon).await?;
         }
-    };
+    }
     Ok(())
 }

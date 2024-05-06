@@ -4,7 +4,7 @@ use teloxide::{requests::Requester, types::ChatId, Bot};
 use tokio_cron_scheduler::Job;
 use uuid::Uuid;
 
-use crate::{bot::send_sticker, settings::stickers::Stickers};
+use crate::{bot::sticker::send_sticker, settings::stickers::Stickers};
 
 use super::{CronJobError, CronJobType};
 
