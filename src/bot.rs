@@ -24,8 +24,8 @@ use crate::chat::user_chat;
 
 use self::{
     callbacks::{
-        confirm_reminder_text, date_callback, expired_callback, occurence_callback,
-        remind_text_callback, time_callback, CallbackPage,
+        change_time_callback, confirm_reminder_text, date_callback, expired_callback,
+        occurence_callback, remind_text_callback, time_callback, CallbackPage,
     },
     chatroom::ChatRoom,
     handlers::{group_title_change, is_not_group_chat},

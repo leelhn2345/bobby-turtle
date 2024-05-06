@@ -393,9 +393,49 @@ pub async fn time_callback(
                 TimeSelect::MinuteDown => remind_time.minute_down(),
             };
 
+            p.update(CallbackPage::RemindDateTime {
+                date: naive_date,
+                time: remind_time.clone(),
+            })
+            .await?;
+
             time_page(bot, chat.id, *msg_id, naive_date, remind_time).await?;
         }
     }
+    Ok(())
+}
+
+pub async fn change_time_callback(
+    bot: Bot,
+    q: CallbackQuery,
+    p: CallbackState,
+    date_time: DateTime<Tz>,
+) -> anyhow::Result<()> {
+    bot.answer_callback_query(q.id).await?;
+
+    let Some(Message {
+        id: msg_id, chat, ..
+    }) = q.message
+    else {
+        tracing::error!("no message data from telegram");
+        bail!("no query message data");
+    };
+    let chosen_hour = date_time.hour();
+    let chosen_minute = date_time.minute();
+
+    let Ok(remind_time) = RemindTime::new(chosen_hour, chosen_minute) else {
+        bail!("can't parse datetime");
+    };
+
+    let naive_date = date_time.date_naive();
+
+    p.update(CallbackPage::RemindDateTime {
+        date: naive_date,
+        time: remind_time.clone(),
+    })
+    .await?;
+
+    time_page(bot, chat.id, msg_id, naive_date, remind_time).await?;
     Ok(())
 }
 

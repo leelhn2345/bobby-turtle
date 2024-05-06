@@ -12,7 +12,7 @@ use teloxide::{
 
 use crate::bot::{callbacks::expired::expired_callback_msg, CallbackPage};
 
-use super::{occurrence::occurence_page, time::RemindTime, time_page, CallbackState};
+use super::{occurence_page, time::RemindTime, time_page, CallbackState};
 
 const CURRENT_MONTH: &str = "Current";
 const OCCURENCE: &str = "Occurence";
@@ -306,7 +306,7 @@ pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyh
         match data.as_ref() {
             OCCURENCE => {
                 p.update(CallbackPage::Occcurence).await?;
-                occurence_page(bot, chat.id).await?;
+                occurence_page(bot, chat.id, id).await?;
             }
             CURRENT_MONTH => {
                 let now = Utc::now().with_timezone(&Tz::Singapore);

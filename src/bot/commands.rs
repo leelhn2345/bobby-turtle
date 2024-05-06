@@ -6,7 +6,7 @@ use teloxide::{requests::Requester, types::Message, utils::command::BotCommands,
 use crate::settings::stickers::Stickers;
 
 use super::{
-    callbacks::{occurence_page, CallbackState},
+    callbacks::{new_occurence_page, CallbackState},
     chatroom::ChatRoom,
     sticker::send_sticker,
     BotDialogue, CallbackPage, ChatState,
@@ -74,7 +74,7 @@ impl Command {
             }
             Self::Remind => {
                 callback.update(CallbackPage::Occcurence).await?;
-                occurence_page(bot, msg.chat.id).await?;
+                new_occurence_page(bot, msg.chat.id).await?;
             }
         };
         Ok(())

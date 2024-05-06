@@ -2,10 +2,11 @@ use anyhow::bail;
 use chrono::{Datelike, Utc};
 use chrono_tz::Tz;
 use teloxide::{
-    payloads::SendMessageSetters,
+    payloads::{EditMessageTextSetters, SendMessageSetters},
     requests::Requester,
     types::{
-        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, ParseMode,
+        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId,
+        ParseMode,
     },
     Bot,
 };
@@ -70,7 +71,7 @@ fn occurence_keyboard() -> InlineKeyboardMarkup {
 
 #[allow(deprecated)]
 #[tracing::instrument(skip_all)]
-pub async fn occurence_page(bot: Bot, chat_id: ChatId) -> anyhow::Result<()> {
+pub async fn new_occurence_page(bot: Bot, chat_id: ChatId) -> anyhow::Result<()> {
     let keyboard = occurence_keyboard();
     bot.send_message(chat_id, OCCURENCE_DESCRIPTION)
         .parse_mode(ParseMode::Markdown)
@@ -79,6 +80,16 @@ pub async fn occurence_page(bot: Bot, chat_id: ChatId) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allow(deprecated)]
+#[tracing::instrument(skip_all)]
+pub async fn occurence_page(bot: Bot, chat_id: ChatId, msg_id: MessageId) -> anyhow::Result<()> {
+    let keyboard = occurence_keyboard();
+    bot.edit_message_text(chat_id, msg_id, OCCURENCE_DESCRIPTION)
+        .parse_mode(ParseMode::Markdown)
+        .reply_markup(keyboard)
+        .await?;
+    Ok(())
+}
 pub async fn occurence_callback(
     bot: Bot,
     q: CallbackQuery,

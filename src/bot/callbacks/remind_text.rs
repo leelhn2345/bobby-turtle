@@ -211,13 +211,10 @@ pub async fn remind_text_callback(
             .await?;
             sched.add(job).await?;
 
-            bot.edit_message_text(
-                chat.id,
-                msg_id,
-                format!("confirmed 🐢 - your message will be sent."),
-            )
-            .await?;
             p.reset().await?;
+
+            bot.edit_message_text(chat.id, msg_id, "confirmed 🐢 - your message will be sent.")
+                .await?;
         }
 
         _ => expired_callback_msg(bot, chat.id, msg_id).await?,
