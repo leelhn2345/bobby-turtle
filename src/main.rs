@@ -1,6 +1,3 @@
-#![warn(clippy::pedantic)]
-#![forbid(unsafe_code)]
-
 use telebot::settings::environment::get_environment;
 use telebot::settings::get_settings;
 use telebot::settings::telemetry::init_tracing;

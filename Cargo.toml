@@ -37,6 +37,19 @@ features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros
 [profile.dev.package.sqlx-macros]
 opt-level = 3
 
+[profile.dev]
+panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+
 [profile.release]
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 strip = true
+debug = 0
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"

@@ -21,7 +21,7 @@ struct RemindMetadata {
     id: i32,
     job_id: Uuid,
 }
-pub async fn get_normal_reminders(bot: &Bot, pool: &PgPool) -> Result<Vec<Job>, CronJobError> {
+pub async fn get_reminders(bot: &Bot, pool: &PgPool) -> Result<Vec<Job>, CronJobError> {
     let reminders: Vec<Reminder> = sqlx::query_as!(
         Reminder,
         "
@@ -53,7 +53,7 @@ pub async fn get_normal_reminders(bot: &Bot, pool: &PgPool) -> Result<Vec<Job>, 
             let pool = poolx.clone();
             Box::pin(async move {
                 let text = format!(
-                    r"To: @{}
+                    r"From: @{}
 
 {}",
                     remind.username, remind.message
@@ -83,17 +83,21 @@ pub async fn get_normal_reminders(bot: &Bot, pool: &PgPool) -> Result<Vec<Job>, 
     }
 
     for job_meta in job_metadata {
-        let pool = pool.clone();
-        tokio::spawn(async move {
-            sqlx::query!(
-                "UPDATE jobs_one_off set job_id=$1 where id=$2",
-                job_meta.job_id,
-                job_meta.id
-            )
-            .execute(&pool)
-            .await
-            .unwrap()
-        });
+        tokio::spawn(update_job(job_meta, pool.clone()));
     }
     Ok(job_vec)
+}
+/// Update database with the new `job_id/Uuid`.
+#[tracing::instrument(skip_all)]
+async fn update_job(data: RemindMetadata, pool: PgPool) {
+    if let Err(e) = sqlx::query!(
+        "UPDATE jobs_cron set job_id=$1 WHERE id=$2",
+        data.job_id,
+        data.id
+    )
+    .execute(&pool)
+    .await
+    {
+        tracing::error!(error = %e);
+    }
 }

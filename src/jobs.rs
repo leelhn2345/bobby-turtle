@@ -1,12 +1,12 @@
 mod greetings;
-mod normal_reminder;
+mod reminders;
 
 use sqlx::PgPool;
 use teloxide::Bot;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 
 use crate::{
-    jobs::{greetings::get_greetings, normal_reminder::get_normal_reminders},
+    jobs::{greetings::get_greetings, reminders::get_reminders},
     settings::stickers::Stickers,
 };
 
@@ -37,7 +37,7 @@ pub async fn init_scheduler(
         tracing::error!(error = %e);
         e
     })?;
-    let mut remind_jobs = get_normal_reminders(bot, pool).await.map_err(|e| {
+    let mut remind_jobs = get_reminders(bot, pool).await.map_err(|e| {
         tracing::error!(error = %e);
         e
     })?;
