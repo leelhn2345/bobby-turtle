@@ -60,24 +60,23 @@ pub async fn user_chat(
     msg: Message,
     pool: PgPool,
 ) -> anyhow::Result<()> {
-    if let Some(x) = msg.text() {
+    if let Some(chat_msg) = msg.text() {
         tracing::debug!("some1 is chatting with bot");
-        let chat_msg = x.to_string();
         bot_chat(bot, client, &msg, chat_msg, pool).await?;
     }
     Ok(())
 }
 
-#[tracing::instrument(name = "bot chatting", skip_all)]
+#[tracing::instrument(skip_all)]
 #[allow(deprecated)]
 pub async fn bot_chat(
     bot: Bot,
     client: Client<OpenAIConfig>,
     msg: &Message,
-    chat_msg: String,
+    chat_msg: impl Into<String>,
     pool: PgPool,
 ) -> Result<Message, ChatError> {
-    let chat_response = match chatgpt_chat(client, msg, chat_msg, pool).await {
+    let chat_response = match chatgpt_chat(client, msg, chat_msg.into(), pool).await {
         Ok(response) => {
             bot.send_message(msg.chat.id, response)
                 .parse_mode(ParseMode::Markdown)
@@ -96,7 +95,7 @@ pub async fn bot_chat(
     Ok(chat_response)
 }
 
-#[tracing::instrument(name = "chatgpt's chat completion", skip_all)]
+#[tracing::instrument(skip_all)]
 pub async fn chatgpt_chat(
     client: Client<OpenAIConfig>,
     msg: &Message,
@@ -123,7 +122,7 @@ pub async fn chatgpt_chat(
     };
     let mut past_logs = get_logs(&mut tx, msg.chat.id.0).await?;
 
-    save_logs(&mut tx, msg.chat.id.0, Role::User, &chat_msg, username).await?;
+    save_chat_logs(&mut tx, msg.chat.id.0, Role::User, &chat_msg, username).await?;
 
     let chat_req = match username {
         Some(x) => ChatCompletionRequestUserMessageArgs::default()
@@ -169,7 +168,7 @@ pub async fn chatgpt_chat(
         .ok_or(ChatError::NoContent)?
         .to_owned();
 
-    save_logs(
+    save_chat_logs(
         &mut tx,
         msg.chat.id.0,
         Role::Assistant,
@@ -239,8 +238,8 @@ async fn get_logs(
     Ok(past_req_msges)
 }
 
-#[tracing::instrument(name = "save chat logs to db", skip_all)]
-async fn save_logs(
+#[tracing::instrument(skip_all)]
+async fn save_chat_logs(
     tx: &mut Transaction<'_, Postgres>,
     msg_id: i64,
     role: Role,

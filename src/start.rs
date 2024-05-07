@@ -91,14 +91,14 @@ pub async fn start_app(settings: Settings, env: Environment) {
 
     let axum_server = tokio::spawn(start_server(stop_token, stop_flag, router, address));
 
-    let bot_app = start_bot(
+    let bot_app = tokio::spawn(start_bot(
         tele_bot,
         listener,
         settings,
         chatgpt,
         connection_pool,
         sched,
-    );
+    ));
 
     tokio::select! {
         _ = signal::ctrl_c() => tracing::info!("ctrl-c received"),
