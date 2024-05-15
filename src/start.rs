@@ -31,8 +31,10 @@ async fn start_server(
     stop_flag: impl Future<Output = ()> + Send,
     router: Router,
     address: SocketAddr,
+    pool: PgPool,
+    bot: Bot,
 ) {
-    let app = app_router(router);
+    let app = app_router(router, pool, bot);
 
     axum::Server::bind(&address)
         .serve(app.into_make_service())
@@ -89,7 +91,14 @@ pub async fn start_app(settings: Settings, env: Environment) {
 
     let stop_token = listener.stop_token();
 
-    let axum_server = tokio::spawn(start_server(stop_token, stop_flag, router, address));
+    let axum_server = tokio::spawn(start_server(
+        stop_token,
+        stop_flag,
+        router,
+        address,
+        connection_pool.clone(),
+        tele_bot.clone(),
+    ));
 
     let bot_app = tokio::spawn(start_bot(
         tele_bot,

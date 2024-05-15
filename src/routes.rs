@@ -1,20 +1,21 @@
 pub mod health_check;
+mod resume;
 
 use axum::{body::Body, http::Request, routing::get, Router};
+use sqlx::PgPool;
+use teloxide::Bot;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
-use utoipa_auto_discovery::utoipa_auto_discovery;
 use utoipa_swagger_ui::SwaggerUi;
+use utoipauto::utoipauto;
 
-#[utoipa_auto_discovery(paths = "
-    ( health_check => ./src/routes/health_check.rs );
-")]
+#[utoipauto]
 #[derive(OpenApi)]
 #[openapi()]
 struct ApiDoc;
 
-pub fn app_router(router: Router) -> Router {
+pub fn app_router(router: Router, pool: PgPool, bot: Bot) -> Router {
     let trace_layer = ServiceBuilder::new().layer(TraceLayer::new_for_http().make_span_with(
         |request: &Request<Body>| {
             let req_id = uuid::Uuid::new_v4();
@@ -26,9 +27,15 @@ pub fn app_router(router: Router) -> Router {
             )
         },
     ));
-    router
-        .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
-        .route("/", get(health_check::root))
-        .route("/health_check", get(health_check::health_check))
-        .layer(trace_layer)
+
+    router.merge(
+        Router::new()
+            .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
+            .route("/resume", get(resume::resume_details))
+            .with_state(pool)
+            .with_state(bot)
+            .layer(trace_layer)
+            .route("/", get(health_check::root))
+            .route("/health_check", get(health_check::health_check)),
+    )
 }

@@ -26,7 +26,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18" }
 utoipa = { version = "4.2.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
-utoipa_auto_discovery = "0.3.0"
+utoipauto = "0.1.10"
 uuid = { version = "1.8.0", features = ["v4"] }
 
 [dependencies.sqlx]

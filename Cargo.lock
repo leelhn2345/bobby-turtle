@@ -101,7 +101,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "rand",
- "reqwest 0.12.3",
+ "reqwest 0.12.4",
  "reqwest-eventsource",
  "secrecy",
  "serde",
@@ -1927,9 +1927,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.3"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e6cc1e89e689536eb5aeede61520e874df5a4707df811cd5da4aa5fbb2aae19"
+checksum = "566cafdd92868e0939d3fb961bd0dc25fcfaaed179291093b3d43e6b3150ea10"
 dependencies = [
  "base64 0.22.0",
  "bytes",
@@ -1981,7 +1981,7 @@ dependencies = [
  "mime",
  "nom",
  "pin-project-lite",
- "reqwest 0.12.3",
+ "reqwest 0.12.4",
  "thiserror",
 ]
 
@@ -2770,7 +2770,7 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "utoipa-swagger-ui",
- "utoipa_auto_discovery",
+ "utoipauto",
  "uuid",
 ]
 
@@ -3253,14 +3253,35 @@ dependencies = [
 ]
 
 [[package]]
-name = "utoipa_auto_discovery"
-version = "0.3.0"
+name = "utoipauto"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abbbc25214823fc15c9c87581f81925610f8c348a156b06398ebca66fa332886"
+checksum = "0c8b0206d46c52c964fbbecbf0f4015941000ce1122a3cc6103a64496bc9997e"
+dependencies = [
+ "utoipauto-macro",
+]
+
+[[package]]
+name = "utoipauto-core"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f188b14783527b8694a62ac420f945049a8ad02ae403c59cd6d6d46ce70e7d00"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.58",
+]
+
+[[package]]
+name = "utoipauto-macro"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8441b6e9e8e22128550e718d08b9da55182e85920e3d307894300cb9fcd4791b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.58",
+ "utoipauto-core",
 ]
 
 [[package]]
