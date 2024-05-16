@@ -1,6 +1,7 @@
-use std::{collections::HashMap, time::Instant};
+use std::time::Instant;
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use indexmap::IndexMap;
 use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -53,6 +54,7 @@ pub struct JobExperience {
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JobDescription {
+    id: i32,
     job_title: String,
     time_span: String,
     description: Option<Vec<String>>,
@@ -61,6 +63,7 @@ pub struct JobDescription {
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Projects {
+    id: i32,
     project_name: String,
     project_url: String,
     description: Option<Vec<String>>,
@@ -98,6 +101,7 @@ pub async fn resume_details(
 }
 
 struct JobInfo {
+    id: i32,
     company_name: String,
     company_url: String,
     job_title: String,
@@ -106,22 +110,23 @@ struct JobInfo {
 }
 
 async fn get_job_experience(pool: &PgPool) -> Result<Vec<JobExperience>, AboutPageError> {
-    let job_info = sqlx::query_as!(
+    let job_info: Vec<JobInfo> = sqlx::query_as!(
         JobInfo,
-        "select company_name, company_url,job_title,time_span,description 
+        "select id, company_name, company_url,job_title,time_span,description 
         from job_experience 
         order by id desc"
     )
     .fetch_all(pool)
     .await?;
 
-    let mut job_info_hashmap: HashMap<String, JobExperience> = HashMap::new();
+    let mut job_info_hashmap: IndexMap<String, JobExperience> = IndexMap::new();
 
     for info in job_info {
         job_info_hashmap
             .entry(info.company_name.clone())
             .and_modify(|e| {
                 e.jobs_in_company.push(JobDescription {
+                    id: info.id,
                     job_title: info.job_title.clone(),
                     time_span: info.time_span.clone(),
                     description: info.description.clone(),
@@ -131,6 +136,7 @@ async fn get_job_experience(pool: &PgPool) -> Result<Vec<JobExperience>, AboutPa
                 company_name: info.company_name,
                 company_url: info.company_url,
                 jobs_in_company: vec![JobDescription {
+                    id: info.id,
                     job_title: info.job_title,
                     time_span: info.time_span,
                     description: info.description,
@@ -144,7 +150,7 @@ async fn get_projects(pool: &PgPool) -> Result<Vec<Projects>, AboutPageError> {
     let projects = sqlx::query_as!(
         Projects,
         "select
-        project_name,project_url,description
+        id, project_name,project_url,description
         from projects
         order by id desc
         "
