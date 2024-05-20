@@ -12,14 +12,32 @@ use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-use utoipa::OpenApi;
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
+    Modify, OpenApi,
+};
 use utoipa_swagger_ui::SwaggerUi;
 use utoipauto::utoipauto;
 
 #[utoipauto]
 #[derive(OpenApi)]
-#[openapi()]
+#[openapi(modifiers(&SecurityAddon))]
 struct ApiDoc;
+
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        openapi.components = Some(
+            utoipa::openapi::ComponentsBuilder::new()
+                .security_scheme(
+                    "cookieAuth",
+                    SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("cookieAuth"))),
+                )
+                .build(),
+        );
+    }
+}
 
 pub fn app_router(router: Router, pool: PgPool, bot: Bot) -> Router {
     let trace_layer = ServiceBuilder::new().layer(TraceLayer::new_for_http().make_span_with(
