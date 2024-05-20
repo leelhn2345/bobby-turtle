@@ -29,6 +29,7 @@ utoipa = { version = "4.2.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 utoipauto = "0.1.10"
 uuid = { version = "1.8.0", features = ["v4"] }
+validator = { version = "0.18.1", features = ["derive"] }
 
 [dependencies.sqlx]
 version = "0.7.4"

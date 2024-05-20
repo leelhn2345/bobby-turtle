@@ -1,7 +1,13 @@
+mod auth;
 pub mod health_check;
 mod resume;
 
-use axum::{body::Body, http::Request, routing::get, Router};
+use axum::{
+    body::Body,
+    http::Request,
+    routing::{get, post},
+    Router,
+};
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
@@ -32,6 +38,8 @@ pub fn app_router(router: Router, pool: PgPool, bot: Bot) -> Router {
         Router::new()
             .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
             .route("/resume", get(resume::resume_details))
+            .route("/login", post(auth::login))
+            .route("/register", post(auth::register_new_user))
             .with_state(pool)
             .with_state(bot)
             .layer(trace_layer)

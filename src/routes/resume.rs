@@ -74,6 +74,7 @@ pub struct Projects {
 /// gets data about resume
 #[utoipa::path(
     get,
+    tag="about",
     path="/resume",
     responses(
         (status = 200, body=ResumeDetails, description = "resume data")
