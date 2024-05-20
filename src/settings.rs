@@ -2,7 +2,6 @@ pub mod app;
 pub mod database;
 pub mod environment;
 pub mod stickers;
-pub mod telemetry;
 
 use app::AppSettings;
 use database::DatabaseSettings;

@@ -1,7 +1,7 @@
 use telebot::settings::environment::get_environment;
 use telebot::settings::get_settings;
-use telebot::settings::telemetry::init_tracing;
 use telebot::start::start_app;
+use telebot::telemetry::init_tracing;
 
 #[tokio::main]
 async fn main() {
