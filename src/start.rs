@@ -76,6 +76,13 @@ pub async fn start_app(settings: Settings, env: Environment) {
     let chatgpt = Client::new();
     let connection_pool = get_connection_pool(&settings.database);
 
+    if env == Environment::Production {
+        sqlx::migrate!("./migrations")
+            .run(&connection_pool)
+            .await
+            .expect("cannot run db migration");
+    }
+
     let sched = init_scheduler(&tele_bot, &settings.stickers, &connection_pool)
         .await
         .expect("cannot initialize scheduler");

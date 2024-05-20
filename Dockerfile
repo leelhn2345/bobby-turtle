@@ -26,6 +26,7 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 COPY config config
+COPY migrations migrations
 COPY --from=builder /app/target/release/telebot telebot
 
 ENV APP_ENVIRONMENT=production
