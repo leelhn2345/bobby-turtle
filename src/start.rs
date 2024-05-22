@@ -18,6 +18,7 @@ use teloxide::{
 };
 use tokio::signal;
 use tokio_cron_scheduler::JobScheduler;
+use tower_sessions_sqlx_store::PostgresStore;
 
 use crate::{
     bot::{bot_handler, callbacks::CallbackPage, init_bot_details, ChatState},
@@ -34,10 +35,11 @@ async fn start_server(
     pool: PgPool,
     bot: Bot,
 ) {
-    let app = app_router(router, pool, bot);
+    let session_store = PostgresStore::new(pool.clone());
+    let app_router = app_router(router, pool, bot);
 
     axum::Server::bind(&address)
-        .serve(app.into_make_service())
+        .serve(app_router.into_make_service())
         .with_graceful_shutdown(stop_flag)
         .await
         .map_err(|_| stop_token.stop())

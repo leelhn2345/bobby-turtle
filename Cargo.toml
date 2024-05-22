@@ -7,13 +7,15 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.82"
-async-openai = "0.20.0"
+argon2 = "0.5.3"
+async-openai = "0.21.0"
 axum = "0.6.20"
 chrono = "0.4.38"
 chrono-tz = "0.9.0"
 dotenvy = "0.15.7"
 figment = { version = "0.10.17", features = ["yaml", "env"] }
 indexmap = "2.2.6"
+passwords = "3.1.16"
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.116"
@@ -23,6 +25,7 @@ tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 tokio-cron-scheduler = { version = "0.10.0", features = ["signal"] }
 tower = "0.4.13"
 tower-http = { version = "0.4.4", features = ["trace"] }
+tower-sessions-sqlx-store = { version = "0.12.0", features = ["postgres"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18" }
 utoipa = { version = "4.2.0", features = ["axum_extras"] }

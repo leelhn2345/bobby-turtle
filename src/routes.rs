@@ -1,6 +1,6 @@
-mod auth;
 pub mod health_check;
 mod resume;
+mod user;
 
 use axum::{
     body::Body,
@@ -28,14 +28,12 @@ struct SecurityAddon;
 
 impl Modify for SecurityAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        openapi.components = Some(
-            utoipa::openapi::ComponentsBuilder::new()
-                .security_scheme(
-                    "cookieAuth",
-                    SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("cookieAuth"))),
-                )
-                .build(),
-        );
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "cookieAuth",
+                SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("HAHAID"))),
+            );
+        }
     }
 }
 
@@ -56,8 +54,8 @@ pub fn app_router(router: Router, pool: PgPool, bot: Bot) -> Router {
         Router::new()
             .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
             .route("/resume", get(resume::resume_details))
-            .route("/login", post(auth::login))
-            .route("/register", post(auth::register_new_user))
+            .route("/sign_up", post(user::sign_up::register_new_user))
+            .route("/login", post(user::login::login))
             .with_state(pool)
             .with_state(bot)
             .layer(trace_layer)
