@@ -48,9 +48,6 @@ pub enum ChatError {
 
     #[error(transparent)]
     SqlxError(#[from] sqlx::Error),
-
-    #[error(transparent)]
-    UnknownError(#[from] serde_json::Error),
 }
 
 #[tracing::instrument(skip_all)]
@@ -299,9 +296,5 @@ mod tests {
                 b: C::D("fefefe".to_string()),
             }),
         ];
-        let fff = serde_json::to_string_pretty(&aaa).expect("cannot serialize");
-        println!("{fff:#?}");
-        let eee: Vec<Abc> = serde_json::from_str(&fff).expect("cannot deserialize");
-        println!("{eee:#?}");
     }
 }

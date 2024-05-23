@@ -13,11 +13,11 @@ use super::{analyze_password, UserError};
 pub struct LoginCredentials {
     #[validate(email)]
     #[schema(default = "user@email.com")]
-    username: String,
+    pub username: String,
 
-    #[validate(length(min = 8, max = 20), custom(function = "analyze_password"))]
+    #[validate(custom(function = "analyze_password"))]
     #[schema(default = "1Q2w3e4r5t!~")]
-    password: String,
+    pub password: String,
 }
 
 /// user login

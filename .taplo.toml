@@ -1,3 +1,10 @@
 # using <https://taplo.tamasfe.dev/> as toml formatter
 [formatting]
 array_auto_expand = false # `saecki/crates.nvim` can't parse multiline features array
+
+[[rule]]
+include = ["**/Cargo.toml"]
+keys = ["workspace.dependencies", "dependencies"]
+
+[rule.formatting]
+reorder_keys = true

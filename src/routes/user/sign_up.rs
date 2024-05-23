@@ -10,19 +10,20 @@ use validator::Validate;
 
 use super::{analyze_password, UserError};
 
-#[derive(Deserialize, ToSchema, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NewUserCredentials {
     #[validate(email)]
     #[schema(default = "user@email.com")]
     username: String,
 
-    #[validate(length(min = 8, max = 20), custom(function = "analyze_password"))]
+    #[validate(custom(function = "analyze_password"))]
     #[schema(default = "1Q2w3e4r5t!~")]
     password: String,
     first_name: String,
     last_name: Option<String>,
 }
+
 /// new user
 #[utoipa::path(
     post,

@@ -3,7 +3,8 @@ use std::{convert::Infallible, future::Future, net::SocketAddr, time::Duration};
 use anyhow::Context;
 use async_openai::{config::OpenAIConfig, Client};
 
-use axum::Router;
+use axum::{routing::get, Router};
+use axum_login::tower_sessions::ExpiredDeletion;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use teloxide::{
     dispatching::{dialogue::InMemStorage, Dispatcher},
@@ -16,7 +17,7 @@ use teloxide::{
     },
     Bot,
 };
-use tokio::signal;
+use tokio::{net::TcpListener, signal};
 use tokio_cron_scheduler::JobScheduler;
 use tower_sessions_sqlx_store::PostgresStore;
 
@@ -36,11 +37,16 @@ async fn start_server(
     bot: Bot,
 ) {
     let session_store = PostgresStore::new(pool.clone());
-    let app_router = app_router(router, pool, bot);
 
-    axum::Server::bind(&address)
-        .serve(app_router.into_make_service())
-        .with_graceful_shutdown(stop_flag)
+    tokio::task::spawn(
+        session_store
+            .clone()
+            .continuously_delete_expired(tokio::time::Duration::from_secs(60)),
+    );
+
+    let app_router = app_router(router, session_store, pool, bot);
+    let listener = TcpListener::bind(&address).await.unwrap();
+    axum::serve(listener, app_router.into_make_service())
         .await
         .map_err(|_| stop_token.stop())
         .expect("axum server error");
@@ -53,9 +59,9 @@ fn get_connection_pool(config: &DatabaseSettings) -> PgPool {
 }
 
 fn get_webhook_options(settings: &AppSettings, env: &Environment) -> Options {
-    let address = format!("{}:{}", settings.host, settings.port)
+    let address = format!("{}:{}", settings.host, settings.bot_port)
         .parse()
-        .context(format!("{}:{}", settings.host, settings.port,))
+        .context(format!("{}:{}", settings.host, settings.bot_port,))
         .expect("unable to parse into address url");
 
     let url = format!("{}/webhook", settings.public_url)
@@ -67,7 +73,7 @@ fn get_webhook_options(settings: &AppSettings, env: &Environment) -> Options {
 
     if *env == Environment::Local {
         options = options.drop_pending_updates();
-        tracing::info!("app started in http://localhost:{}", settings.port);
+        tracing::info!("app started in http://localhost:{}", settings.bot_port);
     }
 
     options
@@ -93,21 +99,26 @@ pub async fn start_app(settings: Settings, env: Environment) {
 
     let Options { address, .. } = options;
 
-    let (mut listener, stop_flag, router) = webhooks::axum_to_router(tele_bot.clone(), options)
+    // let (mut listener, stop_flag, router) = webhooks::axum_to_router(tele_bot.clone(), options)
+    //     .await
+    //     .map_err(|e| tracing::error!("{e:#?}"))
+    //     .expect("unable to get listener");
+
+    let listener = webhooks::axum(tele_bot.clone(), options)
         .await
         .map_err(|e| tracing::error!("{e:#?}"))
         .expect("unable to get listener");
+    // let stop_token = listener.stop_token();
 
-    let stop_token = listener.stop_token();
-
-    let axum_server = tokio::spawn(start_server(
-        stop_token,
-        stop_flag,
-        router,
-        address,
-        connection_pool.clone(),
-        tele_bot.clone(),
-    ));
+    // let axum_server = tokio::spawn(start_server(
+    //     stop_token,
+    //     stop_flag,
+    //     Router::new(),
+    //     address,
+    //     connection_pool.clone(),
+    //     tele_bot.clone(),
+    // ));
+    //
 
     let bot_app = tokio::spawn(start_bot(
         tele_bot,
@@ -118,9 +129,18 @@ pub async fn start_app(settings: Settings, env: Environment) {
         sched,
     ));
 
+    let tcp_listener = tokio::net::TcpListener::bind("127.0.0.1:5050")
+        .await
+        .unwrap();
+    axum::serve(
+        tcp_listener,
+        Router::new().route("/", get(|| async { "hello wordl" })),
+    )
+    .await
+    .unwrap();
     tokio::select! {
         _ = signal::ctrl_c() => tracing::info!("ctrl-c received"),
-        _o = axum_server => tracing::info!("web server has shutdown."),
+        // _o = axum_server => tracing::info!("web server has shutdown."),
         _o = bot_app => tracing::info!("telegram bot app has shutdown."),
     }
 }

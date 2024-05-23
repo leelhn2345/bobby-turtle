@@ -9,7 +9,7 @@ down:
 prep:
 	@echo "Preparing files for offline sqlx compilation."
 	@echo ""
-	cargo sqlx prepare
+	cargo sqlx prepare --workspace
 
 prod:
 	docker compose up database --detach --wait

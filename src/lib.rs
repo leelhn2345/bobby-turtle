@@ -1,3 +1,4 @@
+mod auth;
 mod bot;
 mod chat;
 mod jobs;
