@@ -1,6 +1,6 @@
 application:
-  bot_port: 5000
-  web_port: 5050
+  bot_port: 5050
+  web_port: 5000
 database:
   host: 127.0.0.1
   port: 5432

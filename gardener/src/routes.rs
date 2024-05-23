@@ -7,7 +7,7 @@ use std::time::Duration;
 use axum::{
     body::Body,
     http::{Request, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use sqlx::PgPool;
@@ -58,6 +58,7 @@ pub fn app_router(pool: PgPool) -> Router {
                 |response: &Response<Body>, latency: Duration, span: &Span| {
                     span.record("status_code", &tracing::field::display(response.status()));
                     span.record("latency", &tracing::field::debug(latency));
+                    // trace here
                 },
             ),
     );
@@ -65,6 +66,10 @@ pub fn app_router(pool: PgPool) -> Router {
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
         .route("/resume", get(resume::resume_details))
+        .route("/sign_up", post(user::sign_up::register_new_user))
+        .route("/login", post(user::login::login))
         .with_state(pool)
         .layer(trace_layer)
+        .route("/", get(health_check::root))
+        .route("/health_check", get(health_check::health_check))
 }

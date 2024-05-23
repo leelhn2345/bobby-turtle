@@ -63,7 +63,7 @@ Run the reverse proxy and get the public URL.
 In my case:
 
 ```sh
-ngrok --http domain=xxxx.xxx.xxx.app 5000
+ngrok --http domain=xxxx.xxx.xxx.app 5050
 ```
 
 Copy [`.env.template`](./.env.template) to `.env` and fill up the corresponding
