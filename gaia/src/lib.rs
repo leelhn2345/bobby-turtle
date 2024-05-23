@@ -17,7 +17,7 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::filter::Targets;
 use tracing_subscriber::{fmt, layer::SubscriberExt};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub application: AppSettings,
     pub database: DatabaseSettings,

@@ -8,7 +8,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use axum_login::tower_sessions::{Expiry, SessionManagerLayer};
+use axum_login::tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer};
 use axum_login::AuthManagerLayerBuilder;
 use sqlx::PgPool;
 use teloxide::Bot;

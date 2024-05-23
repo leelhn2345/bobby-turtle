@@ -9,5 +9,5 @@ async fn main() {
 
     init_tracing(&env, vec![("turtle_bot")]);
 
-    start_bot(env, settings, pool).await;
+    Box::pin(start_bot(env, settings, pool)).await;
 }

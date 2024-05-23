@@ -264,37 +264,3 @@ async fn save_chat_logs(
     })?;
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Serialize, Deserialize, Debug)]
-    enum Abc {
-        A(A),
-        B(B),
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    struct A {
-        a: u8,
-    }
-    #[derive(Serialize, Deserialize, Debug)]
-    struct B {
-        b: C,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    #[serde(untagged)]
-    enum C {
-        D(String),
-    }
-    #[test]
-    fn vec_parse() {
-        let aaa: Vec<Abc> = vec![
-            Abc::A(A { a: 9 }),
-            Abc::B(B {
-                b: C::D("fefefe".to_string()),
-            }),
-        ];
-    }
-}
