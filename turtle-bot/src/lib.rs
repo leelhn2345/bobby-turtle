@@ -1,12 +1,23 @@
 mod bot;
+mod callbacks;
+mod chat;
+mod chatroom;
+mod commands;
+mod handlers;
+mod jobs;
+mod member;
+mod sched;
+mod sticker;
 
 use anyhow::Context;
 use async_openai::Client;
-use bot::bot_handler;
+use bot::{bot_handler, init_bot_details, ChatState};
+use callbacks::CallbackPage;
 use gaia::{app::AppSettings, environment::Environment, Settings};
+use jobs::init_scheduler;
 use sqlx::PgPool;
 use teloxide::{
-    dispatching::Dispatcher,
+    dispatching::{dialogue::InMemStorage, Dispatcher},
     dptree,
     error_handlers::LoggingErrorHandler,
     update_listeners::webhooks::{self, Options},
@@ -24,15 +35,22 @@ pub async fn start_bot(env: Environment, settings: Settings, pool: PgPool) {
         .map_err(|e| tracing::error!("{e:#?}"))
         .expect("unable to get listener");
 
+    let sched = init_scheduler(&tele_bot, &settings.stickers, &pool)
+        .await
+        .expect("cannot initialize scheduler");
+
+    init_bot_details(&tele_bot).await;
+
     let handler = bot_handler();
 
     Dispatcher::builder(tele_bot, handler)
         .dependencies(dptree::deps![
             settings.stickers,
             chatgpt,
-            pool // InMemStorage::<ChatState>::new(),
-                 // InMemStorage::<CallbackPage>::new(),
-                 // sched
+            pool,
+            InMemStorage::<ChatState>::new(),
+            InMemStorage::<CallbackPage>::new(),
+            sched
         ])
         .enable_ctrlc_handler()
         .build()
@@ -55,7 +73,7 @@ fn get_webhook_options(settings: &AppSettings, env: &Environment) -> Options {
 
     if *env == Environment::Local {
         options = options.drop_pending_updates();
-        tracing::info!("bot started in http://localhost:{}", settings.bot_port);
+        tracing::debug!("bot started in http://localhost:{}", settings.bot_port);
     }
 
     options
