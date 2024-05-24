@@ -63,7 +63,8 @@ Run the reverse proxy and get the public URL.
 In my case:
 
 ```sh
-ngrok --http domain=xxxx.xxx.xxx.app 5050
+ngrok --http domain=xxxx.xxx.xxx.app 8443
+# only available ports for webhooks are 80, 88, 443 or 8443
 ```
 
 Copy [`.env.template`](./.env.template) to `.env` and fill up the corresponding

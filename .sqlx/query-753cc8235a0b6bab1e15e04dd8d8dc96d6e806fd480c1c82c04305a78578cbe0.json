@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, company_name, company_url,job_title,time_span,description \n        from job_experience \n        order by id desc",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "company_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "company_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "job_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "time_span",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "753cc8235a0b6bab1e15e04dd8d8dc96d6e806fd480c1c82c04305a78578cbe0"
+}

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select languages,tools,frameworks,others\n        from job_skills",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "languages",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "tools",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "frameworks",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "others",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e3adfeed807750a0a3a6033737c85ef77d4e93e4f2f8d6aed6ed553a950c3ffc"
+}

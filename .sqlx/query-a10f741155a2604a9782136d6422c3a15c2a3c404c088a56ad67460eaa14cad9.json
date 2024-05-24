@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, target, cron_str, message from jobs_cron\n        WHERE type = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "target",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "cron_str",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "message",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a10f741155a2604a9782136d6422c3a15c2a3c404c088a56ad67460eaa14cad9"
+}

@@ -1,11 +1,11 @@
 mod routes;
 
-use axum::{routing::get, Router, ServiceExt};
 use gaia::Settings;
 use sqlx::PgPool;
 
 use crate::routes::app_router;
 
+#[tracing::instrument(skip_all, name = "gardener")]
 pub async fn start_app(settings: Settings, pool: PgPool) {
     let address = format!(
         "{}:{}",

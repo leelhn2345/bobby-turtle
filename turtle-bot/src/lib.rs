@@ -24,6 +24,7 @@ use teloxide::{
     Bot,
 };
 
+#[tracing::instrument(skip_all, name = "turtle bot")]
 pub async fn start_bot(env: Environment, settings: Settings, pool: PgPool) {
     let tele_bot = Bot::from_env();
     let chatgpt = Client::new();

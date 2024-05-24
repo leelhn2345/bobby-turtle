@@ -9,7 +9,7 @@ async fn main() {
     let settings = get_settings(&env).expect("failed to parse settings");
     let pool = get_connection_pool(&env, &settings.database).await;
 
-    init_tracing(&env, vec![("gardener")]);
+    init_tracing(&env, vec!["gardener", "turtle_bot"]);
 
     let bot = tokio::spawn(start_bot(env, settings.clone(), pool.clone()));
     let app = tokio::spawn(start_app(settings, pool));
