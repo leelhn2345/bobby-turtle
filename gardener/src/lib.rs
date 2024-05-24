@@ -51,6 +51,26 @@ pub async fn start_app(env: Environment, settings: Settings, pool: PgPool) {
         ))
         .await
         .expect("error starting axum app");
+
+    match deletion_task.await {
+        Ok(Ok(())) => {
+            tracing::info!("deletion_task has exited");
+        }
+        Ok(Err(e)) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "deletion_task failed to start",
+            );
+        }
+        Err(e) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "deletion_task task failed to complete",
+            );
+        }
+    };
 }
 
 async fn shutdown_signal(

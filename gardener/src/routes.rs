@@ -10,7 +10,7 @@ use axum::{
 };
 use axum_login::AuthManagerLayerBuilder;
 use sqlx::PgPool;
-use tower::{Layer, ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_sessions::{
     cookie::{time::Duration, Key},
@@ -27,7 +27,7 @@ use utoipauto::utoipauto;
 
 use crate::auth::Backend;
 
-#[utoipauto]
+#[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
 #[openapi(modifiers(&SecurityAddon))]
 struct ApiDoc;
