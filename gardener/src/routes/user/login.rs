@@ -6,6 +6,8 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 use validator::Validate;
 
+use crate::auth::AuthSession;
+
 use super::{analyze_password, UserError};
 
 #[derive(Deserialize, ToSchema, Validate)]
@@ -33,6 +35,7 @@ pub struct LoginCredentials {
 )]
 #[tracing::instrument(skip_all,fields(username = login_creds.username))]
 pub async fn login(
+    mut auth_session: AuthSession,
     State(pool): State<PgPool>,
     Json(login_creds): Json<LoginCredentials>,
 ) -> Result<StatusCode, UserError> {

@@ -1,8 +1,6 @@
 mod health_check;
 mod resume;
-mod user;
-
-use std::time::Duration;
+pub mod user;
 
 use axum::{
     body::Body,
@@ -10,9 +8,15 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use axum_login::AuthManagerLayerBuilder;
 use sqlx::PgPool;
-use tower::ServiceBuilder;
+use tower::{Layer, ServiceBuilder};
 use tower_http::trace::TraceLayer;
+use tower_sessions::{
+    cookie::{time::Duration, Key},
+    Expiry, SessionManagerLayer,
+};
+use tower_sessions_sqlx_store::PostgresStore;
 use tracing::Span;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
@@ -20,6 +24,8 @@ use utoipa::{
 };
 use utoipa_swagger_ui::SwaggerUi;
 use utoipauto::utoipauto;
+
+use crate::auth::Backend;
 
 #[utoipauto]
 #[derive(OpenApi)]
@@ -39,29 +45,39 @@ impl Modify for SecurityAddon {
     }
 }
 
-pub fn app_router(pool: PgPool) -> Router {
-    let trace_layer = ServiceBuilder::new().layer(
-        TraceLayer::new_for_http()
-            .make_span_with(|request: &Request<Body>| {
-                let request_id = uuid::Uuid::new_v4();
-                tracing::info_span!(
-                    "request",
-                    method = tracing::field::display(request.method()),
-                    uri = tracing::field::display(request.uri()),
-                    version = tracing::field::debug(request.version()),
-                    request_id = tracing::field::display(request_id),
-                    latency = tracing::field::Empty,
-                    status_code = tracing::field::Empty,
-                )
-            })
-            .on_response(
-                |response: &Response<Body>, latency: Duration, span: &Span| {
-                    span.record("status_code", &tracing::field::display(response.status()));
-                    span.record("latency", &tracing::field::debug(latency));
-                    // trace here
-                },
-            ),
-    );
+pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
+    let trace_layer = TraceLayer::new_for_http()
+        .make_span_with(|request: &Request<Body>| {
+            let request_id = uuid::Uuid::new_v4();
+            tracing::info_span!(
+                "request",
+                method = tracing::field::display(request.method()),
+                uri = tracing::field::display(request.uri()),
+                version = tracing::field::debug(request.version()),
+                request_id = tracing::field::display(request_id),
+                latency = tracing::field::Empty,
+                status_code = tracing::field::Empty,
+            )
+        })
+        .on_response(
+            |response: &Response<Body>, latency: std::time::Duration, span: &Span| {
+                span.record("status_code", &tracing::field::display(response.status()));
+                span.record("latency", &tracing::field::debug(latency));
+                // add tracing below here
+            },
+        );
+
+    let key = Key::generate();
+
+    let session_layer = SessionManagerLayer::new(session_store)
+        // .with_secure(false)
+        .with_expiry(Expiry::OnInactivity(Duration::days(1)))
+        .with_signed(key);
+
+    let backend = Backend::new(pool.clone());
+    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
+
+    let layers = ServiceBuilder::new().layer(trace_layer).layer(auth_layer);
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
@@ -69,7 +85,7 @@ pub fn app_router(pool: PgPool) -> Router {
         .route("/sign_up", post(user::sign_up::register_new_user))
         .route("/login", post(user::login::login))
         .with_state(pool)
-        .layer(trace_layer)
+        .layer(layers)
         .route("/", get(health_check::root))
         .route("/health_check", get(health_check::health_check))
 }
