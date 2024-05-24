@@ -1,7 +1,7 @@
-# Telegram Bot
+# Gardener
 
 <!--toc:start-->
-- [Telegram Bot](#telegram-bot)
+- [Gardener](#gardener)
   - [Features](#features)
   - [Usage](#usage)
   - [Development](#development)
@@ -13,7 +13,10 @@
     - [Prod Env](#prod-env)
 <!--toc:end-->
 
-A virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
+The backend to some of my frontend apps.
+Repo started as a virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
+
+Documentation will be mostly for the telegram pet bot.
 
 ## Features
 
