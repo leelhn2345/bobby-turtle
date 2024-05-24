@@ -13,8 +13,8 @@
     - [Prod Env](#prod-env)
 <!--toc:end-->
 
-The backend to some of my frontend apps.
-Repo started as a virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
+The backend to [digital garden](https://github.com/leelhn2345/blog-client).
+Repo started out as a virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
 
 Documentation will be mostly for the telegram pet bot.
 
