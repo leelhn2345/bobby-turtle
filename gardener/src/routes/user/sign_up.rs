@@ -1,5 +1,4 @@
 use axum::{extract::State, Json};
-use chrono::Utc;
 use password_auth::generate_hash;
 use passwords::analyzer;
 use serde::Deserialize;
@@ -7,10 +6,9 @@ use serde_json::{json, Value};
 use sqlx::PgPool;
 use tokio::task;
 use utoipa::ToSchema;
-use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
-use crate::auth::{AuthSession, AuthenticatedUser};
+use crate::auth::{AuthSession, AuthenticatedUser, PermissionLevel};
 
 use super::{User, UserError};
 
@@ -76,9 +74,7 @@ pub async fn register_new_user(
         return Err(UserError::UsernameTaken);
     };
 
-    let uuid_v4 = Uuid::new_v4();
     let password_hash = task::spawn_blocking(|| generate_hash(new_user.password)).await?;
-    let now = Utc::now();
 
     let user = new_user.user_info;
 
@@ -91,19 +87,19 @@ pub async fn register_new_user(
         ($1,$2,$3,$4,
          $5,$6,$7,$8)
         "#,
-        uuid_v4,
+        user.user_id,
         user.username,
         password_hash,
         user.first_name,
         user.last_name,
-        now,
-        now,
-        user.permission_level.as_str(),
+        user.joined_at,
+        user.last_updated,
+        user.permission_level as PermissionLevel
     )
     .execute(&pool)
     .await?;
 
-    let auth_user = AuthenticatedUser::new(uuid_v4, password_hash);
+    let auth_user = AuthenticatedUser::new(user.user_id, password_hash);
 
     auth_session.login(&auth_user).await?;
 

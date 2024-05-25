@@ -90,6 +90,7 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
                     "/change-password",
                     post(user::change_password::change_password),
                 )
+                .route("/user-info", get(user::user_info))
                 .route_layer(login_required!(Backend)),
         )
         .route("/resume", get(resume::resume_details))

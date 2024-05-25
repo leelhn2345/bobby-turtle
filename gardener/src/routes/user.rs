@@ -1,26 +1,40 @@
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use crate::auth::{AuthSession, Backend, PermissionLevel};
+use anyhow::anyhow;
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::PgPool;
 use tokio::task;
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
-
-use crate::auth::{AuthSession, Backend, PermissionLevel};
 
 pub mod change_password;
 pub mod sign_up;
 
-#[derive(Deserialize, Validate, ToSchema)]
+#[derive(Deserialize, Serialize, sqlx::FromRow, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::struct_field_names)]
 pub struct User {
+    #[serde(skip, default = "Uuid::new_v4")]
+    user_id: Uuid,
+
     #[validate(email)]
     #[schema(default = "user@email.com")]
     username: String,
 
     #[schema(default = "alpha")]
     first_name: String,
+
     #[schema(default = "user")]
     last_name: Option<String>,
+
+    #[serde(skip_deserializing, default = "Utc::now")]
+    joined_at: DateTime<Utc>,
+
+    #[serde(skip_deserializing, default = "Utc::now")]
+    last_updated: DateTime<Utc>,
 
     #[serde(skip_deserializing, default = "PermissionLevel::member")]
     permission_level: PermissionLevel,
@@ -170,4 +184,29 @@ pub async fn logout(mut auth_session: AuthSession) -> Result<Json<Value>, UserEr
         Ok(_) => Ok(Json(json!({"message":"user logged out"}))),
         Err(e) => Err(UserError::UnknownError(e.into())),
     }
+}
+
+/// user info
+#[utoipa::path(
+    get,
+    tag="user",
+    path="/user-info",
+    responses(
+        (status = StatusCode::OK, body = User, description = "user data"),
+    )
+)]
+pub async fn user_info(
+    auth_session: AuthSession,
+    State(pool): State<PgPool>,
+) -> Result<Json<User>, UserError> {
+    let Some(verified_user) = auth_session.user else {
+        return Err(anyhow!("user is not registered in auth session").into());
+    };
+
+    let user: User = sqlx::query_as("select * from users where user_id = $1")
+        .bind(verified_user.user_id)
+        .fetch_one(&pool)
+        .await?;
+
+    Ok(Json(user))
 }

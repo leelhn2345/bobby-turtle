@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use axum_login::{AuthUser, AuthnBackend};
 use password_auth::verify_password;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tokio::task;
 use uuid::Uuid;
@@ -28,8 +28,9 @@ pub enum AuthError {
     TaskJoin(#[from] task::JoinError),
 }
 
-#[derive(sqlx::Type, Deserialize, Clone, Debug)]
-#[sqlx(type_name = "permission_level", rename_all = "lowercase")]
+#[derive(sqlx::Type, Serialize, Deserialize, Clone, Debug)]
+#[sqlx(type_name = "permissions", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum PermissionLevel {
     Alpha,
     Admin,
@@ -40,20 +41,12 @@ impl PermissionLevel {
     pub fn member() -> Self {
         PermissionLevel::Member
     }
-
-    pub fn as_str(&self) -> &str {
-        match self {
-            PermissionLevel::Alpha => "alpha",
-            PermissionLevel::Admin => "admin",
-            PermissionLevel::Member => "member",
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct AuthenticatedUser {
-    user_id: Uuid,
+    pub user_id: Uuid,
     password_hash: String,
     permission_level: PermissionLevel,
 }
