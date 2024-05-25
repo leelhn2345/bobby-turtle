@@ -1,12 +1,11 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
-use passwords::analyzer;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use utoipa::ToSchema;
-use validator::{Validate, ValidationError, ValidationErrors};
+use validator::{Validate, ValidationErrors};
 
-use crate::auth::Backend;
+use crate::auth::{AuthSession, Backend};
 
-pub mod login;
 pub mod sign_up;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -16,8 +15,20 @@ pub struct User {
     #[schema(default = "user@email.com")]
     username: String,
 
+    #[schema(default = "alpha")]
     first_name: String,
+    #[schema(default = "user")]
     last_name: Option<String>,
+}
+
+#[derive(Deserialize, ToSchema, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginCredentials {
+    #[schema(default = "user@email.com")]
+    pub username: String,
+
+    #[schema(default = "1Q2w3e4r5t!~")]
+    pub password: String,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -92,23 +103,48 @@ impl IntoResponse for UserError {
     }
 }
 
-pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
-    let analyzed = analyzer::analyze(password);
+/// user login
+#[utoipa::path(
+    post,
+    tag="user",
+    path="/login",
+    responses(
+        (status = StatusCode::OK, description = "user successfully logged in"),
+        (status = StatusCode::UNPROCESSABLE_ENTITY, description = "validation error"),
+        (status = StatusCode::INTERNAL_SERVER_ERROR, description = "internal server error")
+    )
+)]
+pub async fn login(
+    mut auth_session: AuthSession,
+    Json(login_creds): Json<LoginCredentials>,
+) -> Result<StatusCode, UserError> {
+    let user = match auth_session.authenticate(login_creds).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return Err(UserError::InvalidCredentials);
+        }
+        Err(e) => return Err(UserError::UnknownError(e.into())),
+    };
 
-    if analyzed.numbers_count() == 0 {
-        return Err(ValidationError::new("no number in password"));
+    if auth_session.login(&user).await.is_err() {
+        return Ok(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    if analyzed.lowercase_letters_count() == 0 {
-        return Err(ValidationError::new("no lowercase characters in password"));
-    }
+    Ok(StatusCode::OK)
+}
 
-    if analyzed.uppercase_letters_count() == 0 {
-        return Err(ValidationError::new("no uppercase characters in password"));
+/// user logout
+#[utoipa::path(
+    get,
+    tag="user",
+    path="/logout",
+    responses(
+        (status = StatusCode::OK, description = "user successfully logged out"),
+    )
+)]
+pub async fn logout(mut auth_session: AuthSession) -> Result<Json<Value>, UserError> {
+    match auth_session.logout().await {
+        Ok(_) => Ok(Json(json!({"message":"user logged out"}))),
+        Err(e) => Err(UserError::UnknownError(e.into())),
     }
-
-    if analyzed.symbols_count() == 0 {
-        return Err(ValidationError::new("no special characters in password"));
-    }
-    Ok(())
 }

@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use tokio::task;
 use uuid::Uuid;
 
-use crate::routes::user::{login::LoginCredentials, User};
+use crate::routes::user::LoginCredentials;
 
 #[derive(Clone)]
 pub struct Backend {
@@ -30,7 +30,6 @@ pub enum AuthError {
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
     user_id: Uuid,
-    // username: String,
     password_hash: String,
 }
 

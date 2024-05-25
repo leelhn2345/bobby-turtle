@@ -1,15 +1,16 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use password_auth::generate_hash;
+use passwords::analyzer;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::{types::Json, PgPool};
+use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use validator::Validate;
+use validator::{Validate, ValidationError};
 
 use crate::auth::{AuthSession, AuthenticatedUser};
 
-use super::{analyze_password, User, UserError};
+use super::{User, UserError};
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct NewUser {
@@ -19,6 +20,27 @@ pub struct NewUser {
     #[validate(custom(function = "analyze_password"))]
     #[schema(default = "1Q2w3e4r5t!~")]
     password: String,
+}
+
+pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
+    let analyzed = analyzer::analyze(password);
+
+    if analyzed.numbers_count() == 0 {
+        return Err(ValidationError::new("no number in password"));
+    }
+
+    if analyzed.lowercase_letters_count() == 0 {
+        return Err(ValidationError::new("no lowercase characters in password"));
+    }
+
+    if analyzed.uppercase_letters_count() == 0 {
+        return Err(ValidationError::new("no uppercase characters in password"));
+    }
+
+    if analyzed.symbols_count() == 0 {
+        return Err(ValidationError::new("no special characters in password"));
+    }
+    Ok(())
 }
 
 /// new user
@@ -58,11 +80,15 @@ pub async fn register_new_user(
     let user = new_user.user_info;
 
     sqlx::query!(
-        "insert into users (user_id,username,password_hash)
-        values ($1,$2,$3)",
+        "insert into users 
+        (user_id,username,password_hash,first_name,last_name)
+        values 
+        ($1,$2,$3,$4,$5)",
         uuid_v4,
         user.username,
-        password_hash
+        password_hash,
+        user.first_name,
+        user.last_name,
     )
     .execute(&pool)
     .await?;

@@ -5,7 +5,6 @@ use axum_login::tower_sessions::ExpiredDeletion;
 use gaia::Settings;
 use sqlx::PgPool;
 use tower_sessions_sqlx_store::PostgresStore;
-use turtle_bot::start_bot;
 
 use crate::routes::app_router;
 

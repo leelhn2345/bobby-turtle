@@ -4,9 +4,8 @@ pub mod user;
 
 use axum::{
     body::Body,
-    handler::Handler,
     http::{Request, Response},
-    routing::{get, post, Route},
+    routing::{get, post},
     Router,
 };
 use axum_login::{login_required, AuthManagerLayerBuilder};
@@ -73,6 +72,7 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
     let session_layer = SessionManagerLayer::new(session_store)
         // .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::days(1)))
+        .with_name("gardener.id")
         .with_signed(key);
 
     let backend = Backend::new(pool.clone());
@@ -82,13 +82,15 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
-        .route("/resume", get(resume::resume_details))
-        .route(
-            "/logout",
-            get(user::login::logout).layer(login_required!(Backend)),
+        .merge(
+            // login required routes here
+            Router::new()
+                .route("/logout", get(user::logout))
+                .route_layer(login_required!(Backend)),
         )
+        .route("/resume", get(resume::resume_details))
         .route("/sign_up", post(user::sign_up::register_new_user))
-        .route("/login", post(user::login::login))
+        .route("/login", post(user::login))
         .with_state(pool)
         .layer(layers)
         .route("/", get(health_check::root))
