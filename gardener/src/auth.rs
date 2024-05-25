@@ -28,7 +28,7 @@ pub enum AuthError {
     TaskJoin(#[from] task::JoinError),
 }
 
-#[derive(sqlx::Type, Serialize, Deserialize, Clone, Debug)]
+#[derive(PartialEq, sqlx::Type, Serialize, Deserialize, Clone, Debug)]
 #[sqlx(type_name = "permissions", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum PermissionLevel {
@@ -49,7 +49,7 @@ pub struct AuthenticatedUser {
     pub user_id: Uuid,
     pub username: String,
     password_hash: String,
-    permission_level: PermissionLevel,
+    pub permission_level: PermissionLevel,
 }
 
 impl AuthenticatedUser {

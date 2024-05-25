@@ -4,11 +4,12 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::PgPool;
 use tokio::task;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
+
+use super::AppState;
 
 pub mod change_password;
 pub mod sign_up;
@@ -206,11 +207,13 @@ pub async fn logout(mut auth_session: AuthSession) -> Result<Json<Value>, UserEr
 )]
 pub async fn user_info(
     auth_session: AuthSession,
-    State(pool): State<PgPool>,
+    State(app): State<AppState>,
 ) -> Result<Json<User>, UserError> {
     let Some(verified_user) = auth_session.user else {
         return Err(anyhow!("user is not registered in auth session").into());
     };
+
+    let pool = app.pool;
 
     let user: User = sqlx::query_as("select * from users where user_id = $1")
         .bind(verified_user.user_id)

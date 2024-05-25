@@ -6,6 +6,8 @@ use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
+use super::AppState;
+
 #[derive(thiserror::Error, Debug)]
 pub enum AboutPageError {
     #[error(transparent)]
@@ -82,9 +84,10 @@ pub struct Projects {
 )]
 #[tracing::instrument(skip_all)]
 pub async fn resume_details(
-    State(pool): State<PgPool>,
+    State(app): State<AppState>,
 ) -> Result<Json<ResumeDetails>, AboutPageError> {
     let now = Instant::now();
+    let pool = app.pool;
     let job_experiences = get_job_experience(&pool).await?;
     let projects = get_projects(&pool).await?;
     let about_me = get_about_me(&pool).await?;
