@@ -1,10 +1,24 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use passwords::analyzer;
-use serde::Serialize;
-use validator::{ValidationError, ValidationErrors};
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use validator::{Validate, ValidationError, ValidationErrors};
+
+use crate::auth::Backend;
 
 pub mod login;
 pub mod sign_up;
+
+#[derive(Deserialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct User {
+    #[validate(email)]
+    #[schema(default = "user@email.com")]
+    username: String,
+
+    first_name: String,
+    last_name: Option<String>,
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum UserError {
@@ -17,11 +31,14 @@ pub enum UserError {
     #[error("invalid credentials")]
     InvalidCredentials,
 
-    #[error("{0}")]
-    UnexpectedError(String),
+    #[error("unknown error")]
+    UnknownError(#[from] anyhow::Error),
 
     #[error(transparent)]
     Database(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    Authentication(#[from] axum_login::Error<Backend>),
 }
 
 impl IntoResponse for UserError {
@@ -46,18 +63,29 @@ impl IntoResponse for UserError {
                 (StatusCode::UNAUTHORIZED, "invalid credentials".to_owned())
             }
 
-            Self::UnexpectedError(e) => {
-                tracing::error!(e);
+            Self::UnknownError(e) => {
+                tracing::error!("{e:#?}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal server error".to_owned(),
                 )
             }
 
-            Self::Database(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal server error".to_owned(),
-            ),
+            Self::Database(e) => {
+                tracing::error!("{e:#?}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_owned(),
+                )
+            }
+
+            Self::Authentication(e) => {
+                tracing::error!("{e:#?}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_owned(),
+                )
+            }
         };
 
         (status_code, Json(ErrorResponse { message: msg })).into_response()

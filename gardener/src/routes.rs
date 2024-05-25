@@ -4,11 +4,12 @@ pub mod user;
 
 use axum::{
     body::Body,
+    handler::Handler,
     http::{Request, Response},
-    routing::{get, post},
+    routing::{get, post, Route},
     Router,
 };
-use axum_login::AuthManagerLayerBuilder;
+use axum_login::{login_required, AuthManagerLayerBuilder};
 use sqlx::PgPool;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -82,6 +83,10 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
         .route("/resume", get(resume::resume_details))
+        .route(
+            "/logout",
+            get(user::login::logout).layer(login_required!(Backend)),
+        )
         .route("/sign_up", post(user::sign_up::register_new_user))
         .route("/login", post(user::login::login))
         .with_state(pool)

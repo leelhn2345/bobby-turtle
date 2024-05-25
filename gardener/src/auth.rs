@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use tokio::task;
 use uuid::Uuid;
 
-use crate::routes::user::login::LoginCredentials;
+use crate::routes::user::{login::LoginCredentials, User};
 
 #[derive(Clone)]
 pub struct Backend {
@@ -28,13 +28,22 @@ pub enum AuthError {
 }
 
 #[derive(Debug, Clone)]
-pub struct User {
+pub struct AuthenticatedUser {
     user_id: Uuid,
     // username: String,
     password_hash: String,
 }
 
-impl AuthUser for User {
+impl AuthenticatedUser {
+    pub fn new(user_id: Uuid, password_hash: String) -> Self {
+        Self {
+            user_id,
+            password_hash,
+        }
+    }
+}
+
+impl AuthUser for AuthenticatedUser {
     type Id = Uuid;
 
     fn id(&self) -> Self::Id {
@@ -48,7 +57,7 @@ impl AuthUser for User {
 
 #[async_trait]
 impl AuthnBackend for Backend {
-    type User = User;
+    type User = AuthenticatedUser;
 
     type Credentials = LoginCredentials;
 
@@ -59,7 +68,7 @@ impl AuthnBackend for Backend {
         creds: Self::Credentials,
     ) -> Result<Option<Self::User>, Self::Error> {
         let user: Option<Self::User> = sqlx::query_as!(
-            User,
+            AuthenticatedUser,
             "select user_id,password_hash from users where username = $1",
             creds.username
         )
@@ -77,7 +86,7 @@ impl AuthnBackend for Backend {
         user_id: &axum_login::UserId<Self>,
     ) -> Result<Option<Self::User>, Self::Error> {
         let user = sqlx::query_as!(
-            User,
+            AuthenticatedUser,
             "select user_id,password_hash from users where user_id = $1",
             user_id
         )

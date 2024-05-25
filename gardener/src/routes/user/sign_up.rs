@@ -1,27 +1,24 @@
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2, PasswordHasher,
-};
 use axum::{extract::State, http::StatusCode, Json};
+use password_auth::generate_hash;
 use serde::Deserialize;
-use sqlx::PgPool;
+use serde_json::{json, Value};
+use sqlx::{types::Json, PgPool};
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
-use super::{analyze_password, UserError};
+use crate::auth::{AuthSession, AuthenticatedUser};
+
+use super::{analyze_password, User, UserError};
 
 #[derive(Deserialize, Validate, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct NewUserCredentials {
-    #[validate(email)]
-    #[schema(default = "user@email.com")]
-    username: String,
+pub struct NewUser {
+    #[serde(flatten)]
+    user_info: User,
 
     #[validate(custom(function = "analyze_password"))]
     #[schema(default = "1Q2w3e4r5t!~")]
     password: String,
-    first_name: String,
-    last_name: Option<String>,
 }
 
 /// new user
@@ -36,47 +33,43 @@ pub struct NewUserCredentials {
         (status = StatusCode::INTERNAL_SERVER_ERROR, description = "internal server error")
     )
 )]
-#[tracing::instrument(skip_all,fields(username = new_user_creds.username))]
+#[tracing::instrument(skip_all, fields(username = new_user.user_info.username))]
 pub async fn register_new_user(
+    mut auth_session: AuthSession,
     State(pool): State<PgPool>,
-    Json(new_user_creds): Json<NewUserCredentials>,
-) -> Result<StatusCode, UserError> {
-    new_user_creds.validate()?;
+    Json(new_user): Json<NewUser>,
+) -> Result<Json<Value>, UserError> {
+    new_user.validate()?;
 
-    let user = sqlx::query!(
+    let user_exists = sqlx::query!(
         "select from users where username = $1",
-        new_user_creds.username
+        new_user.user_info.username
     )
     .fetch_optional(&pool)
     .await?;
 
-    if user.is_some() {
+    if user_exists.is_some() {
         return Err(UserError::UsernameTaken);
     };
 
-    let password = new_user_creds.password.as_bytes();
-    let salt = SaltString::generate(&mut OsRng);
+    let uuid_v4 = Uuid::new_v4();
+    let password_hash = generate_hash(new_user.password);
 
-    let argon2 = Argon2::default();
-
-    let password_hash = argon2
-        .hash_password(password, &salt)
-        .map_err(|_| {
-            UserError::UnexpectedError(
-                "couldn't turn new user's password into password hash".to_string(),
-            )
-        })?
-        .to_string();
+    let user = new_user.user_info;
 
     sqlx::query!(
         "insert into users (user_id,username,password_hash)
         values ($1,$2,$3)",
-        uuid::Uuid::new_v4(),
-        new_user_creds.username,
+        uuid_v4,
+        user.username,
         password_hash
     )
     .execute(&pool)
     .await?;
 
-    Ok(StatusCode::CREATED)
+    let auth_user = AuthenticatedUser::new(uuid_v4, password_hash);
+
+    auth_session.login(&auth_user).await?;
+
+    Ok(Json(json!({"message":"user successfully created"})))
 }
