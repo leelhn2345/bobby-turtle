@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select user_id,password_hash,permission_level as \"permission_level:PermissionLevel\" \n            from users where user_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "permission_level:PermissionLevel",
+        "type_info": {
+          "Custom": {
+            "name": "permissions",
+            "kind": {
+              "Enum": [
+                "alpha",
+                "admin",
+                "member"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1ebd40b1a5475e940c60b2cdaf2a42d5cd4c3a8740adadb518ebf408cc3feaa0"
+}
