@@ -5,7 +5,7 @@ use tokio::task;
 use utoipa::ToSchema;
 use validator::{Validate, ValidationErrors};
 
-use crate::auth::{AuthSession, Backend};
+use crate::auth::{AuthSession, Backend, PermissionLevel};
 
 pub mod change_password;
 pub mod sign_up;
@@ -21,6 +21,9 @@ pub struct User {
     first_name: String,
     #[schema(default = "user")]
     last_name: Option<String>,
+
+    #[serde(skip_deserializing, default = "PermissionLevel::member")]
+    permission_level: PermissionLevel,
 }
 
 #[derive(Deserialize, ToSchema, Clone)]

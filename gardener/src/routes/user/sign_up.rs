@@ -83,17 +83,22 @@ pub async fn register_new_user(
     let user = new_user.user_info;
 
     sqlx::query!(
-        "insert into users 
-        (user_id,username,password_hash,first_name,last_name,joined_at,last_updated)
+        r#"
+        insert into users 
+        (user_id, username, password_hash, first_name, 
+         last_name, joined_at, last_updated, permission_level)
         values 
-        ($1,$2,$3,$4,$5,$6,$7)",
+        ($1,$2,$3,$4,
+         $5,$6,$7,$8)
+        "#,
         uuid_v4,
         user.username,
         password_hash,
         user.first_name,
         user.last_name,
         now,
-        now
+        now,
+        user.permission_level.as_str(),
     )
     .execute(&pool)
     .await?;

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use axum_login::{AuthUser, AuthnBackend};
 use password_auth::verify_password;
+use serde::Deserialize;
 use sqlx::PgPool;
 use tokio::task;
 use uuid::Uuid;
@@ -27,10 +28,34 @@ pub enum AuthError {
     TaskJoin(#[from] task::JoinError),
 }
 
+#[derive(sqlx::Type, Deserialize, Clone, Debug)]
+#[sqlx(type_name = "permission_level", rename_all = "lowercase")]
+pub enum PermissionLevel {
+    Alpha,
+    Admin,
+    Member,
+}
+
+impl PermissionLevel {
+    pub fn member() -> Self {
+        PermissionLevel::Member
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            PermissionLevel::Alpha => "alpha",
+            PermissionLevel::Admin => "admin",
+            PermissionLevel::Member => "member",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct AuthenticatedUser {
     user_id: Uuid,
     password_hash: String,
+    permission_level: PermissionLevel,
 }
 
 impl AuthenticatedUser {
@@ -38,6 +63,7 @@ impl AuthenticatedUser {
         Self {
             user_id,
             password_hash,
+            permission_level: PermissionLevel::Member,
         }
     }
 }
@@ -68,7 +94,10 @@ impl AuthnBackend for Backend {
     ) -> Result<Option<Self::User>, Self::Error> {
         let user: Option<Self::User> = sqlx::query_as!(
             AuthenticatedUser,
-            "select user_id,password_hash from users where username = $1",
+            r#"
+            select user_id,password_hash, permission_level as "permission_level: PermissionLevel" 
+            from users where username = $1
+            "#,
             creds.username
         )
         .fetch_optional(&self.db)
@@ -86,7 +115,10 @@ impl AuthnBackend for Backend {
     ) -> Result<Option<Self::User>, Self::Error> {
         let user = sqlx::query_as!(
             AuthenticatedUser,
-            "select user_id,password_hash from users where user_id = $1",
+            r#"
+            select user_id,password_hash,permission_level as "permission_level:PermissionLevel" 
+            from users where user_id = $1
+            "#,
             user_id
         )
         .fetch_optional(&self.db)
