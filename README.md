@@ -1,7 +1,7 @@
-# Telegram Bot
+# Gardener
 
 <!--toc:start-->
-- [Telegram Bot](#telegram-bot)
+- [Gardener](#gardener)
   - [Features](#features)
   - [Usage](#usage)
   - [Development](#development)
@@ -13,7 +13,10 @@
     - [Prod Env](#prod-env)
 <!--toc:end-->
 
-A virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
+The backend to [digital garden](https://github.com/leelhn2345/blog-client).
+Repo started out as a virtual [turtle pet](https://t.me/baldyturtlebot) on telegram.
+
+Documentation will be mostly for the telegram pet bot.
 
 ## Features
 
@@ -63,7 +66,8 @@ Run the reverse proxy and get the public URL.
 In my case:
 
 ```sh
-ngrok --http domain=xxxx.xxx.xxx.app 5000
+ngrok --http domain=xxxx.xxx.xxx.app 8443
+# only available ports for webhooks are 80, 88, 443 or 8443
 ```
 
 Copy [`.env.template`](./.env.template) to `.env` and fill up the corresponding

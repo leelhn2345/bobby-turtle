@@ -1,6 +1,5 @@
 .git*
 .cargo
-migrations/
 target/
 .dockerignore
 .env

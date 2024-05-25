@@ -10,6 +10,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 5000:5000
+      - 5050:5050
     environment:
       # these env keys have to be set for deployment.
       # the values used below are for production simulation purpose.

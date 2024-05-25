@@ -14,7 +14,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY . .
-RUN cargo build --release --bin telebot
+RUN cargo build --release --bin gardener
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
@@ -26,9 +26,10 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 COPY config config
-COPY --from=builder /app/target/release/telebot telebot
+COPY migrations migrations
+COPY --from=builder /app/target/release/gardener gardener
 
 ENV APP_ENVIRONMENT=production
 
-ENTRYPOINT ["./telebot"]
+ENTRYPOINT ["./gardener"]
 

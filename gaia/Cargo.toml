@@ -1,0 +1,18 @@
+[package]
+name = "gaia"
+version.workspace = true
+edition.workspace = true
+description = "just like the great mother earth, this crate stores resources for us to thrive in"
+
+[dependencies]
+dotenvy = "0.15.7"
+figment = { version = "0.10.17", features = ["yaml", "env"] }
+secrecy = { version = "0.8.0", features = ["serde"] }
+
+serde.workspace = true
+sqlx.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true
