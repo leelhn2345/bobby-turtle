@@ -50,6 +50,15 @@ pub struct LoginCredentials {
     pub password: String,
 }
 
+impl LoginCredentials {
+    pub fn new(username: impl Into<String>, password: impl Into<String>) -> Self {
+        Self {
+            username: username.into(),
+            password: password.into(),
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum UserError {
     #[error("username is taken")]
@@ -100,7 +109,7 @@ impl IntoResponse for UserError {
             }
 
             Self::SamePassword => (
-                StatusCode::UNAUTHORIZED,
+                StatusCode::BAD_REQUEST,
                 "new password is same as old password".to_owned(),
             ),
 

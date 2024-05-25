@@ -47,7 +47,7 @@ pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
 #[utoipa::path(
     post,
     tag="user",
-    path="/sign_up",
+    path="/sign-up",
     responses(
         (status = StatusCode::OK, description = "user successfully registered"),
         (status = StatusCode::CONFLICT, description = "username is taken"),
@@ -99,7 +99,7 @@ pub async fn register_new_user(
     .execute(&pool)
     .await?;
 
-    let auth_user = AuthenticatedUser::new(user.user_id, password_hash);
+    let auth_user = AuthenticatedUser::new(user.user_id, user.username, password_hash);
 
     auth_session.login(&auth_user).await?;
 

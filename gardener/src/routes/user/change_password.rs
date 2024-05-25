@@ -1,4 +1,6 @@
+use anyhow::anyhow;
 use axum::{extract::State, Json};
+use chrono::Utc;
 use password_auth::generate_hash;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -14,15 +16,14 @@ use super::{sign_up::analyze_password, LoginCredentials, UserError};
 #[derive(Validate, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NewPassword {
-    #[serde(flatten)]
-    old_info: LoginCredentials,
+    old_password: String,
     #[validate(custom(function = "analyze_password"))]
     #[schema(default = "1Q2w3e4r5t6Y!~")]
     new_password: String,
 }
 
 #[utoipa::path(
-    post,
+    put,
     tag="user",
     path="/change-password",
     responses(
@@ -34,12 +35,19 @@ pub async fn change_password(
     State(pool): State<PgPool>,
     Json(new_password): Json<NewPassword>,
 ) -> Result<Json<Value>, UserError> {
-    if new_password.old_info.password == new_password.new_password {
+    if new_password.old_password == new_password.new_password {
         return Err(UserError::SamePassword);
     };
-    let user_exists = auth_session
-        .authenticate(new_password.old_info.clone())
-        .await?;
+    let curr_user = auth_session.clone().user;
+
+    let Some(user) = curr_user else {
+        return Err(anyhow!("no user recognized in current auth session").into());
+    };
+
+    let username = user.username;
+    let login_creds = LoginCredentials::new(&username, &new_password.old_password);
+
+    let user_exists = auth_session.authenticate(login_creds).await?;
 
     if user_exists.is_none() {
         return Err(UserError::InvalidCredentials);
@@ -47,15 +55,17 @@ pub async fn change_password(
 
     new_password.validate()?;
 
-    let username = new_password.old_info.username;
-
     let password_hash = task::spawn_blocking(|| generate_hash(new_password.new_password)).await?;
-
+    let now = Utc::now();
     sqlx::query!(
         "update users 
-        set password_hash = $1 
-        where username = $2",
+        set 
+        password_hash = $1,
+        last_updated = $2
+        where 
+        username = $3",
         password_hash,
+        now,
         username
     )
     .execute(&pool)

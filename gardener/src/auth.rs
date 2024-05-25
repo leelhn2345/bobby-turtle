@@ -47,14 +47,16 @@ impl PermissionLevel {
 #[allow(dead_code)]
 pub struct AuthenticatedUser {
     pub user_id: Uuid,
+    pub username: String,
     password_hash: String,
     permission_level: PermissionLevel,
 }
 
 impl AuthenticatedUser {
-    pub fn new(user_id: Uuid, password_hash: String) -> Self {
+    pub fn new(user_id: Uuid, username: String, password_hash: String) -> Self {
         Self {
             user_id,
+            username,
             password_hash,
             permission_level: PermissionLevel::Member,
         }
@@ -88,7 +90,7 @@ impl AuthnBackend for Backend {
         let user: Option<Self::User> = sqlx::query_as!(
             AuthenticatedUser,
             r#"
-            select user_id,password_hash, permission_level as "permission_level: PermissionLevel" 
+            select user_id, username, password_hash, permission_level as "permission_level: PermissionLevel" 
             from users where username = $1
             "#,
             creds.username
@@ -109,7 +111,7 @@ impl AuthnBackend for Backend {
         let user = sqlx::query_as!(
             AuthenticatedUser,
             r#"
-            select user_id,password_hash,permission_level as "permission_level:PermissionLevel" 
+            select user_id, username, password_hash,permission_level as "permission_level:PermissionLevel" 
             from users where user_id = $1
             "#,
             user_id

@@ -5,7 +5,7 @@ pub mod user;
 use axum::{
     body::Body,
     http::{Request, Response},
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 use axum_login::{login_required, AuthManagerLayerBuilder};
@@ -88,13 +88,13 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
                 .route("/logout", get(user::logout))
                 .route(
                     "/change-password",
-                    post(user::change_password::change_password),
+                    put(user::change_password::change_password),
                 )
                 .route("/user-info", get(user::user_info))
                 .route_layer(login_required!(Backend)),
         )
         .route("/resume", get(resume::resume_details))
-        .route("/sign_up", post(user::sign_up::register_new_user))
+        .route("/sign-up", post(user::sign_up::register_new_user))
         .route("/login", post(user::login))
         .with_state(pool)
         .layer(layers)
