@@ -20,6 +20,8 @@ utoipauto = "0.1.10"
 validator = { version = "0.18.1", features = ["derive"] }
 
 anyhow.workspace = true
+chrono-tz.workspace = true
+chrono.workspace = true
 gaia = { version = "0.1.0", path = "../gaia" }
 serde.workspace = true
 serde_json.workspace = true

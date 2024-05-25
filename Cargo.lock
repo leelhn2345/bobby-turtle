@@ -419,6 +419,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-targets 0.52.5",
 ]
@@ -1018,6 +1019,8 @@ dependencies = [
  "async-trait",
  "axum 0.7.5",
  "axum-login",
+ "chrono",
+ "chrono-tz",
  "gaia",
  "indexmap",
  "password-auth",

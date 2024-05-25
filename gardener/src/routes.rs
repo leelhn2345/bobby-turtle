@@ -86,6 +86,10 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool) -> Router {
             // login required routes here
             Router::new()
                 .route("/logout", get(user::logout))
+                .route(
+                    "/change-password",
+                    post(user::change_password::change_password),
+                )
                 .route_layer(login_required!(Backend)),
         )
         .route("/resume", get(resume::resume_details))

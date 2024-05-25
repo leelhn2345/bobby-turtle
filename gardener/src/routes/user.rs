@@ -1,11 +1,13 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::task;
 use utoipa::ToSchema;
 use validator::{Validate, ValidationErrors};
 
 use crate::auth::{AuthSession, Backend};
 
+pub mod change_password;
 pub mod sign_up;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -42,6 +44,9 @@ pub enum UserError {
     #[error("invalid credentials")]
     InvalidCredentials,
 
+    #[error("new password is same as old password")]
+    SamePassword,
+
     #[error("unknown error")]
     UnknownError(#[from] anyhow::Error),
 
@@ -50,6 +55,9 @@ pub enum UserError {
 
     #[error(transparent)]
     Authentication(#[from] axum_login::Error<Backend>),
+
+    #[error(transparent)]
+    TaskJoin(#[from] task::JoinError),
 }
 
 impl IntoResponse for UserError {
@@ -74,6 +82,11 @@ impl IntoResponse for UserError {
                 (StatusCode::UNAUTHORIZED, "invalid credentials".to_owned())
             }
 
+            Self::SamePassword => (
+                StatusCode::UNAUTHORIZED,
+                "new password is same as old password".to_owned(),
+            ),
+
             Self::UnknownError(e) => {
                 tracing::error!("{e:#?}");
                 (
@@ -91,6 +104,13 @@ impl IntoResponse for UserError {
             }
 
             Self::Authentication(e) => {
+                tracing::error!("{e:#?}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_owned(),
+                )
+            }
+            Self::TaskJoin(e) => {
                 tracing::error!("{e:#?}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,

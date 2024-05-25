@@ -1,9 +1,11 @@
 use axum::{extract::State, Json};
+use chrono::Utc;
 use password_auth::generate_hash;
 use passwords::analyzer;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use tokio::task;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
@@ -75,20 +77,23 @@ pub async fn register_new_user(
     };
 
     let uuid_v4 = Uuid::new_v4();
-    let password_hash = generate_hash(new_user.password);
+    let password_hash = task::spawn_blocking(|| generate_hash(new_user.password)).await?;
+    let now = Utc::now();
 
     let user = new_user.user_info;
 
     sqlx::query!(
         "insert into users 
-        (user_id,username,password_hash,first_name,last_name)
+        (user_id,username,password_hash,first_name,last_name,joined_at,last_updated)
         values 
-        ($1,$2,$3,$4,$5)",
+        ($1,$2,$3,$4,$5,$6,$7)",
         uuid_v4,
         user.username,
         password_hash,
         user.first_name,
         user.last_name,
+        now,
+        now
     )
     .execute(&pool)
     .await?;
