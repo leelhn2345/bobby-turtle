@@ -1,7 +1,4 @@
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use axum::{http::StatusCode, response::Html};
 
 /// Root URL
 #[utoipa::path(
@@ -12,8 +9,8 @@ use axum::{
         ( status=StatusCode::OK,description="hello world!")
     )
 )]
-pub async fn root() -> Response {
-    "hello world!".into_response()
+pub async fn root() -> Html<&'static str> {
+    Html("<h1>Hello World!</h1>")
 }
 
 /// health check
