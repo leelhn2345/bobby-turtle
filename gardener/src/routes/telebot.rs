@@ -75,6 +75,7 @@ pub async fn send_tele_msg(
 ) -> Result<(), BotError> {
     let mut tx = app.pool.begin().await?;
     check_if_exists_and_inside(&mut tx, chat_id).await?;
+    tx.commit().await?;
     app.bot.send_message(ChatId(chat_id), msg).await?;
     Ok(())
 }
