@@ -7,13 +7,20 @@ use axum::{
 };
 use serde::Serialize;
 use teloxide::{requests::Requester, types::ChatId, RequestError};
+use turtle_bot::chatroom::{check_if_exists_and_inside, ChatRoomError};
 
 use super::AppState;
 
 #[derive(thiserror::Error, Debug)]
 pub enum BotError {
     #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+
+    #[error(transparent)]
     TelegramRequest(#[from] RequestError),
+
+    #[error(transparent)]
+    Chatroom(#[from] ChatRoomError),
 }
 
 impl IntoResponse for BotError {
@@ -24,11 +31,22 @@ impl IntoResponse for BotError {
         }
 
         let (status_code, msg) = match self {
-            BotError::TelegramRequest(e) => {
+            Self::TelegramRequest(e) => {
                 tracing::error!("{e:#?}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "error sending request to telegram".to_owned(),
+                )
+            }
+            Self::Sqlx(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal server error".to_owned(),
+            ),
+            Self::Chatroom(e) => {
+                tracing::error!("{e:#?}");
+                (
+                    StatusCode::NOT_FOUND,
+                    "room does not exist or bot is not in chat".to_owned(),
                 )
             }
         };
@@ -46,7 +64,8 @@ impl IntoResponse for BotError {
     ),
     request_body(content=String, description="message to send"),
     responses(
-        (status = StatusCode::OK, description = "message sent")
+        (status = StatusCode::OK, description = "message sent"),
+        (status = StatusCode::NOT_FOUND, description = "room does not exist or bot is not in chat")
     )
 )]
 pub async fn send_tele_msg(
@@ -54,6 +73,8 @@ pub async fn send_tele_msg(
     Path(chat_id): Path<i64>,
     msg: String,
 ) -> Result<(), BotError> {
+    let mut tx = app.pool.begin().await?;
+    check_if_exists_and_inside(&mut tx, chat_id).await?;
     app.bot.send_message(ChatId(chat_id), msg).await?;
     Ok(())
 }
