@@ -4,12 +4,13 @@ mod routes;
 use axum_login::tower_sessions::ExpiredDeletion;
 use gaia::Settings;
 use sqlx::PgPool;
+use teloxide::Bot;
 use tower_sessions_sqlx_store::PostgresStore;
 
 use crate::routes::app_router;
 
 #[tracing::instrument(skip_all, name = "gardener")]
-pub async fn start_app(settings: Settings, pool: PgPool) {
+pub async fn start_app(settings: Settings, pool: PgPool, bot: Bot) {
     let address = format!(
         "{}:{}",
         settings.application.host, settings.application.web_port
@@ -38,7 +39,7 @@ pub async fn start_app(settings: Settings, pool: PgPool) {
             .continuously_delete_expired(tokio::time::Duration::from_secs(60)),
     );
 
-    let app_router = app_router(session_store, settings.application, pool);
+    let app_router = app_router(session_store, settings.application, pool, bot);
 
     axum::serve(listener, app_router.into_make_service())
         .await

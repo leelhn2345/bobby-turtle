@@ -33,6 +33,7 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 turtle-bot = { version = "0.1.0", path = "../turtle-bot" }
 uuid.workspace = true
+teloxide.workspace = true
 
 [lints]
 workspace = true

@@ -1,5 +1,6 @@
 mod health_check;
 mod resume;
+mod telebot;
 pub mod user;
 
 use axum::{
@@ -13,6 +14,7 @@ use axum_extra::extract::CookieJar;
 use axum_login::{login_required, predicate_required, AuthManagerLayerBuilder};
 use gaia::app::AppSettings;
 use sqlx::PgPool;
+use teloxide::Bot;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_sessions::{
@@ -29,6 +31,8 @@ use utoipa_swagger_ui::SwaggerUi;
 use utoipauto::utoipauto;
 
 use crate::auth::{AuthSession, Backend, PermissionLevel};
+
+use self::telebot::send_tele_msg;
 
 #[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
@@ -53,11 +57,17 @@ pub struct AppState {
     pool: PgPool,
     key: Key,
     domain: String,
+    bot: Bot,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, key: Key, domain: String) -> Self {
-        Self { pool, key, domain }
+    pub fn new(pool: PgPool, key: Key, domain: String, bot: Bot) -> Self {
+        Self {
+            pool,
+            key,
+            domain,
+            bot,
+        }
     }
 }
 
@@ -68,7 +78,12 @@ impl FromRef<AppState> for Key {
     }
 }
 
-pub fn app_router(session_store: PostgresStore, settings: AppSettings, pool: PgPool) -> Router {
+pub fn app_router(
+    session_store: PostgresStore,
+    settings: AppSettings,
+    pool: PgPool,
+    bot: Bot,
+) -> Router {
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(|request: &Request<Body>| {
             let request_id = uuid::Uuid::new_v4();
@@ -104,7 +119,7 @@ pub fn app_router(session_store: PostgresStore, settings: AppSettings, pool: PgP
 
     let layers = ServiceBuilder::new().layer(trace_layer).layer(auth_layer);
 
-    let app_state = AppState::new(pool, key, settings.domain);
+    let app_state = AppState::new(pool, key, settings.domain, bot);
 
     let authenticated_routes = authenticated_routes();
 
@@ -115,6 +130,7 @@ pub fn app_router(session_store: PostgresStore, settings: AppSettings, pool: PgP
         .route("/sign-up", post(user::sign_up::register_new_user))
         .route("/login", post(user::login))
         .route("/handler", get(cookie_handler))
+        .route("/bot-test", post(send_tele_msg))
         .with_state(app_state)
         .layer(layers)
         .route("/", get(health_check::root))

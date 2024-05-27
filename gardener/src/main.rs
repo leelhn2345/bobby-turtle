@@ -1,5 +1,6 @@
 use gaia::{environment::get_environment, get_connection_pool, get_settings, init_tracing};
 use gardener::start_app;
+use teloxide::Bot;
 use tokio::signal;
 use turtle_bot::start_bot;
 
@@ -11,8 +12,10 @@ async fn main() {
 
     init_tracing(&env, vec!["gardener", "turtle_bot"]);
 
-    let bot_app = tokio::spawn(start_bot(env, settings.clone(), pool.clone()));
-    let web_app = tokio::spawn(start_app(settings, pool));
+    let bot = Bot::from_env();
+
+    let bot_app = tokio::spawn(start_bot(bot.clone(), env, settings.clone(), pool.clone()));
+    let web_app = tokio::spawn(start_app(settings, pool, bot));
 
     tokio::select! {
         _ = signal::ctrl_c() => tracing::info!("ctrl-c received"),
