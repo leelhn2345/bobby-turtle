@@ -5,14 +5,12 @@ pub mod user;
 
 use axum::{
     body::Body,
-    extract::{FromRef, State},
     http::{Request, Response, StatusCode},
     routing::get,
     Router,
 };
 use axum_extra::extract::CookieJar;
 use axum_login::{predicate_required, AuthManagerLayerBuilder};
-use gaia::app::AppSettings;
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
@@ -55,35 +53,16 @@ impl Modify for SecurityAddon {
 #[derive(Clone)]
 pub struct AppState {
     pool: PgPool,
-    key: Key,
-    domain: String,
     bot: Bot,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, key: Key, domain: String, bot: Bot) -> Self {
-        Self {
-            pool,
-            key,
-            domain,
-            bot,
-        }
+    pub fn new(pool: PgPool, bot: Bot) -> Self {
+        Self { pool, bot }
     }
 }
 
-// this impl tells `SignedCookieJar` how to access the key from our state
-impl FromRef<AppState> for Key {
-    fn from_ref(state: &AppState) -> Self {
-        state.key.clone()
-    }
-}
-
-pub fn app_router(
-    session_store: PostgresStore,
-    settings: AppSettings,
-    pool: PgPool,
-    bot: Bot,
-) -> Router {
+pub fn app_router(session_store: PostgresStore, pool: PgPool, bot: Bot) -> Router {
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(|request: &Request<Body>| {
             let request_id = uuid::Uuid::new_v4();
@@ -119,7 +98,7 @@ pub fn app_router(
 
     let layers = ServiceBuilder::new().layer(trace_layer).layer(auth_layer);
 
-    let app_state = AppState::new(pool, key, settings.domain, bot);
+    let app_state = AppState::new(pool, bot);
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
@@ -135,15 +114,11 @@ pub fn app_router(
 }
 
 #[utoipa::path(get, path = "/handler", tag = "test")]
-async fn cookie_handler(
-    State(app): State<AppState>,
-    jar: CookieJar,
-) -> Result<(CookieJar, String), StatusCode> {
+async fn cookie_handler(jar: CookieJar) -> Result<(CookieJar, String), StatusCode> {
     let zz = Cookie::build(("fefe", "CVEve"))
         .http_only(true)
         .same_site(SameSite::None)
         .max_age(Duration::weeks(2))
-        .domain(app.domain)
         .path("/")
         .secure(true);
     Ok((jar.add(zz), "check the damn cookie".to_string()))

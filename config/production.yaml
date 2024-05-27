@@ -1,5 +1,4 @@
 application:
   host: 0.0.0.0
-  domain: .digital-garden-haha.vercel.app
 database:
   require_ssl: true

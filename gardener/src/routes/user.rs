@@ -200,12 +200,11 @@ pub async fn login(
 )]
 pub async fn logout(
     mut auth_session: AuthSession,
-    State(app): State<AppState>,
     jar: CookieJar,
 ) -> Result<(CookieJar, Json<Value>), UserError> {
     match auth_session.logout().await {
         Ok(_) => Ok((
-            jar.remove(Cookie::build("userInfo").domain(app.domain)),
+            jar.remove(Cookie::build("userInfo")),
             Json(json!({"message":"user logged out"})),
         )),
         Err(e) => Err(UserError::UnknownError(e.into())),
@@ -251,7 +250,6 @@ pub async fn user_info(
     .http_only(true)
     .same_site(SameSite::None)
     .max_age(Duration::weeks(2))
-    .domain(app.domain)
     .path("/")
     .secure(true);
 
