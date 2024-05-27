@@ -21,17 +21,19 @@ use super::{
     description = "These commands are supported:"
 )]
 pub enum Command {
-    #[command(description = "See all available commands")]
+    #[command(hide)]
+    Start,
+    /// See all available commands
     Help,
-    #[command(description = "Make bot respond to every message")]
+    /// Make bot respond to messages
     Chat,
-    #[command(description = "Stop bot from responding to every message")]
+    /// Stop bot from responding to messages
     Shutup,
-    #[command(description = "Let me remind you")]
+    /// Set reminder
     Remind,
-    #[command(description = "Current datetime (GMT +8)")]
+    /// Current datetime (GMT+8)
     DateTime,
-    #[command(description = "Feed me")]
+    #[command(hide)]
     Feed,
 }
 impl Command {
@@ -44,6 +46,7 @@ impl Command {
         stickers: Stickers,
         dialogue: BotDialogue,
         callback: CallbackState,
+        pool: PgPool,
     ) -> anyhow::Result<()> {
         let chat_id = msg.chat.id;
         match cmd {
@@ -70,7 +73,6 @@ impl Command {
                 bot.send_message(chat_id, "Huh?! Whatever 🙄. Byebye I'm off.")
                     .await?;
             }
-            // Command::Chat(chat_msg) => bot_chat(bot, chatgpt, &msg, chat_msg, pool).await?,
             Self::Feed => {
                 send_sticker(&bot, &chat_id, stickers.coming_soon).await?;
                 bot.send_message(chat_id, "~ feature coming soon ~").await?;
@@ -79,28 +81,7 @@ impl Command {
                 callback.update(CallbackPage::Occcurence).await?;
                 new_occurence_page(bot, msg.chat.id).await?;
             }
-        };
-        Ok(())
-    }
-}
-
-#[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase")]
-pub enum UserCommand {
-    #[command()]
-    Start,
-}
-
-impl UserCommand {
-    pub async fn answer(
-        bot: Bot,
-        msg: Message,
-        cmd: UserCommand,
-        stickers: Stickers,
-        pool: PgPool,
-    ) -> anyhow::Result<()> {
-        match cmd {
-            UserCommand::Start => {
+            Self::Start => {
                 let chat_room = ChatRoom::new(&msg);
                 chat_room.save(&pool).await?;
 
@@ -113,7 +94,7 @@ impl UserCommand {
                 send_sticker(&bot, &msg.chat.id, stickers.hello).await?;
                 bot.send_message(msg.chat.id, text).await?;
             }
-        }
+        };
         Ok(())
     }
 }

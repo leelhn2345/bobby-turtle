@@ -73,11 +73,6 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                         .endpoint(commands::Command::answer),
                 )
                 .branch(
-                    dptree::filter(is_not_group_chat)
-                        .filter_command::<commands::UserCommand>()
-                        .endpoint(commands::UserCommand::answer),
-                )
-                .branch(
                     Message::filter_new_chat_members()
                         .branch(dptree::filter(i_got_added).endpoint(member::handle_me_join))
                         .branch(dptree::endpoint(member::handle_member_join)),
