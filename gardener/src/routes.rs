@@ -7,11 +7,11 @@ use axum::{
     body::Body,
     extract::{FromRef, State},
     http::{Request, Response, StatusCode},
-    routing::{get, post, put},
+    routing::get,
     Router,
 };
 use axum_extra::extract::CookieJar;
-use axum_login::{login_required, predicate_required, AuthManagerLayerBuilder};
+use axum_login::{predicate_required, AuthManagerLayerBuilder};
 use gaia::app::AppSettings;
 use sqlx::PgPool;
 use teloxide::Bot;
