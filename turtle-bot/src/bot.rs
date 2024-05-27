@@ -19,7 +19,7 @@ use crate::{
         occurence_callback, remind_text_callback, time_callback, CallbackPage,
     },
     chat::user_chat,
-    chatroom::ChatRoom,
+    chatroom::update_title,
     commands,
     handlers::{group_title_change, is_not_group_chat},
     member::{self, handle_me_leave, i_got_added, i_got_removed},
@@ -82,7 +82,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                         .branch(dptree::filter(i_got_removed).endpoint(handle_me_leave))
                         .branch(dptree::endpoint(member::handle_member_leave)),
                 )
-                .branch(dptree::filter(group_title_change).endpoint(ChatRoom::update_title))
+                .branch(dptree::filter(group_title_change).endpoint(update_title))
                 .branch(dptree::filter(is_not_group_chat).endpoint(user_chat))
                 .branch(dptree::case![ChatState::Talk].endpoint(user_chat)), // .branch(dptree::filter(to_bot).endpoint(user_chat)),
         )

@@ -9,7 +9,11 @@ use teloxide::{
     Bot,
 };
 
-use crate::{bot::BOT_ME, chatroom::ChatRoom, sticker::send_sticker};
+use crate::{
+    bot::BOT_ME,
+    chatroom::{self, ChatRoom},
+    sticker::send_sticker,
+};
 
 #[tracing::instrument(name = "bot got added", skip_all)]
 pub fn i_got_added(msg: Message) -> bool {
@@ -58,7 +62,7 @@ pub async fn handle_me_join(
 
 #[tracing::instrument(name = "i leave", skip_all)]
 pub async fn handle_me_leave(msg: Message, pool: PgPool) -> Result<()> {
-    ChatRoom::leave(&pool, msg.chat.id.0).await.map_err(|e| {
+    chatroom::leave(&pool, msg.chat.id.0).await.map_err(|e| {
         tracing::error!(error = %e);
         e
     })?;

@@ -49,7 +49,7 @@ pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
 #[utoipa::path(
     post,
     tag="user",
-    path="/sign-up",
+    path="/user/sign-up",
     responses(
         (status = StatusCode::OK, description = "user successfully registered"),
         (status = StatusCode::CONFLICT, description = "username is taken"),

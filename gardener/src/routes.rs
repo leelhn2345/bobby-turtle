@@ -7,11 +7,11 @@ use axum::{
     body::Body,
     extract::{FromRef, State},
     http::{Request, Response, StatusCode},
-    routing::{get, post, put},
+    routing::get,
     Router,
 };
 use axum_extra::extract::CookieJar;
-use axum_login::{login_required, predicate_required, AuthManagerLayerBuilder};
+use axum_login::{predicate_required, AuthManagerLayerBuilder};
 use gaia::app::AppSettings;
 use sqlx::PgPool;
 use teloxide::Bot;
@@ -32,7 +32,7 @@ use utoipauto::utoipauto;
 
 use crate::auth::{AuthSession, Backend, PermissionLevel};
 
-use self::telebot::send_tele_msg;
+use self::{telebot::bot_router, user::user_router};
 
 #[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
@@ -121,24 +121,20 @@ pub fn app_router(
 
     let app_state = AppState::new(pool, key, settings.domain, bot);
 
-    let authenticated_routes = authenticated_routes();
-
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
-        .merge(authenticated_routes)
         .route("/resume", get(resume::resume_details))
-        .route("/sign-up", post(user::sign_up::register_new_user))
-        .route("/login", post(user::login))
         .route("/handler", get(cookie_handler))
-        .route("/bot-test", post(send_tele_msg))
+        .nest("/user", user_router())
+        .nest("/bot", bot_router())
         .with_state(app_state)
         .layer(layers)
         .route("/", get(health_check::root))
         .route("/health_check", get(health_check::health_check))
-        .fallback(|| async { (StatusCode::NOT_FOUND, "nothing to see here") })
+        .fallback(|| async { (StatusCode::NOT_FOUND, "invalid api") })
 }
 
-#[utoipa::path(get, path = "/handler", tag = "cookie")]
+#[utoipa::path(get, path = "/handler", tag = "test")]
 async fn cookie_handler(
     State(app): State<AppState>,
     jar: CookieJar,
@@ -151,17 +147,6 @@ async fn cookie_handler(
         .path("/")
         .secure(true);
     Ok((jar.add(zz), "check the damn cookie".to_string()))
-}
-
-fn authenticated_routes() -> Router<AppState> {
-    Router::new()
-        .route("/logout", get(user::logout))
-        .route(
-            "/change-password",
-            put(user::change_password::change_password),
-        )
-        .route("/user-info", get(user::user_info))
-        .route_layer(login_required!(Backend))
 }
 
 #[allow(clippy::unused_async, dead_code)]

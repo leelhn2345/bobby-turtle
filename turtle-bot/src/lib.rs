@@ -1,7 +1,7 @@
 mod bot;
 mod callbacks;
 mod chat;
-mod chatroom;
+pub mod chatroom;
 mod commands;
 mod handlers;
 mod jobs;
