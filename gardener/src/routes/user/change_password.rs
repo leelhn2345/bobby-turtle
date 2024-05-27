@@ -4,12 +4,11 @@ use chrono::Utc;
 use password_auth::generate_hash;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::PgPool;
 use tokio::task;
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::auth::AuthSession;
+use crate::{auth::AuthSession, routes::AppState};
 
 use super::{sign_up::analyze_password, LoginCredentials, UserError};
 
@@ -32,7 +31,7 @@ pub struct NewPassword {
 )]
 pub async fn change_password(
     auth_session: AuthSession,
-    State(pool): State<PgPool>,
+    State(app): State<AppState>,
     Json(new_password): Json<NewPassword>,
 ) -> Result<Json<Value>, UserError> {
     if new_password.old_password == new_password.new_password {
@@ -55,6 +54,7 @@ pub async fn change_password(
 
     new_password.validate()?;
 
+    let pool = app.pool;
     let password_hash = task::spawn_blocking(|| generate_hash(new_password.new_password)).await?;
     let now = Utc::now();
     sqlx::query!(

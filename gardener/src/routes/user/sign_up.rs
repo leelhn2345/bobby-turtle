@@ -3,12 +3,14 @@ use password_auth::generate_hash;
 use passwords::analyzer;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::PgPool;
 use tokio::task;
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
 
-use crate::auth::{AuthSession, AuthenticatedUser, PermissionLevel};
+use crate::{
+    auth::{AuthSession, AuthenticatedUser, PermissionLevel},
+    routes::AppState,
+};
 
 use super::{User, UserError};
 
@@ -58,11 +60,12 @@ pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
 #[tracing::instrument(skip_all, fields(username = new_user.user_info.username))]
 pub async fn register_new_user(
     mut auth_session: AuthSession,
-    State(pool): State<PgPool>,
+    State(app): State<AppState>,
     Json(new_user): Json<NewUser>,
 ) -> Result<Json<Value>, UserError> {
     new_user.validate()?;
 
+    let pool = app.pool;
     let user_exists = sqlx::query!(
         "select from users where username = $1",
         new_user.user_info.username

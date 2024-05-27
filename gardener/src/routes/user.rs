@@ -1,14 +1,22 @@
 use crate::auth::{AuthSession, Backend, PermissionLevel};
 use anyhow::anyhow;
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Redirect},
+    Json,
+};
+use axum_extra::extract::CookieJar;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::PgPool;
 use tokio::task;
+use tower_sessions::cookie::{time::Duration, Cookie, SameSite};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
+
+use super::AppState;
 
 pub mod change_password;
 pub mod sign_up;
@@ -163,7 +171,7 @@ impl IntoResponse for UserError {
 pub async fn login(
     mut auth_session: AuthSession,
     Json(login_creds): Json<LoginCredentials>,
-) -> Result<StatusCode, UserError> {
+) -> Result<Redirect, UserError> {
     let user = match auth_session.authenticate(login_creds).await {
         Ok(Some(user)) => user,
         Ok(None) => {
@@ -173,10 +181,10 @@ pub async fn login(
     };
 
     if auth_session.login(&user).await.is_err() {
-        return Ok(StatusCode::INTERNAL_SERVER_ERROR);
+        return Err(UserError::UnknownError(anyhow!("can't log in")));
     }
 
-    Ok(StatusCode::OK)
+    Ok(Redirect::to("/user-info"))
 }
 
 /// user logout
@@ -188,14 +196,23 @@ pub async fn login(
         (status = StatusCode::OK, description = "user successfully logged out"),
     )
 )]
-pub async fn logout(mut auth_session: AuthSession) -> Result<Json<Value>, UserError> {
+pub async fn logout(
+    mut auth_session: AuthSession,
+    State(app): State<AppState>,
+    jar: CookieJar,
+) -> Result<(CookieJar, Json<Value>), UserError> {
     match auth_session.logout().await {
-        Ok(_) => Ok(Json(json!({"message":"user logged out"}))),
+        Ok(_) => Ok((
+            jar.remove(Cookie::build("userInfo").domain(app.domain)),
+            Json(json!({"message":"user logged out"})),
+        )),
         Err(e) => Err(UserError::UnknownError(e.into())),
     }
 }
 
 /// user info
+///
+/// more fields will be shown than what is shown in the schema.
 #[utoipa::path(
     get,
     tag="user",
@@ -205,17 +222,36 @@ pub async fn logout(mut auth_session: AuthSession) -> Result<Json<Value>, UserEr
     )
 )]
 pub async fn user_info(
+    jar: CookieJar,
     auth_session: AuthSession,
-    State(pool): State<PgPool>,
-) -> Result<Json<User>, UserError> {
+    State(app): State<AppState>,
+) -> Result<(CookieJar, Json<User>), UserError> {
     let Some(verified_user) = auth_session.user else {
         return Err(anyhow!("user is not registered in auth session").into());
     };
+
+    let pool = app.pool;
 
     let user: User = sqlx::query_as("select * from users where user_id = $1")
         .bind(verified_user.user_id)
         .fetch_one(&pool)
         .await?;
 
-    Ok(Json(user))
+    let permission_cookie = Cookie::build((
+        "userInfo",
+        json!({
+            "firstName":user.first_name,
+            "lastName":user.last_name,
+            "permission":user.permission_level
+        })
+        .to_string(),
+    ))
+    .http_only(true)
+    .same_site(SameSite::None)
+    .max_age(Duration::weeks(2))
+    .domain(app.domain)
+    .path("/")
+    .secure(true);
+
+    Ok((jar.add(permission_cookie), Json(user)))
 }
