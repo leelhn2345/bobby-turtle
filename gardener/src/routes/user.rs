@@ -4,9 +4,11 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Redirect},
-    Json,
+    routing::{get, post, put},
+    Json, Router,
 };
 use axum_extra::extract::CookieJar;
+use axum_login::login_required;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -161,7 +163,7 @@ impl IntoResponse for UserError {
 #[utoipa::path(
     post,
     tag="user",
-    path="/login",
+    path="/user/login",
     responses(
         (status = StatusCode::OK, description = "user successfully logged in"),
         (status = StatusCode::UNPROCESSABLE_ENTITY, description = "validation error"),
@@ -184,14 +186,14 @@ pub async fn login(
         return Err(UserError::UnknownError(anyhow!("can't log in")));
     }
 
-    Ok(Redirect::to("/user-info"))
+    Ok(Redirect::to("/user/user-info"))
 }
 
 /// user logout
 #[utoipa::path(
     get,
     tag="user",
-    path="/logout",
+    path="/user/logout",
     responses(
         (status = StatusCode::OK, description = "user successfully logged out"),
     )
@@ -216,7 +218,7 @@ pub async fn logout(
 #[utoipa::path(
     get,
     tag="user",
-    path="/user-info",
+    path="/user/user-info",
     responses(
         (status = StatusCode::OK, body = User, description = "user data"),
     )
@@ -254,4 +256,14 @@ pub async fn user_info(
     .secure(true);
 
     Ok((jar.add(permission_cookie), Json(user)))
+}
+
+pub fn user_router() -> Router<AppState> {
+    Router::new()
+        .route("/logout", get(logout))
+        .route("/change-password", put(change_password::change_password))
+        .route("/user-info", get(user_info))
+        .route_layer(login_required!(Backend))
+        .route("/sign-up", post(sign_up::register_new_user))
+        .route("/login", post(login))
 }

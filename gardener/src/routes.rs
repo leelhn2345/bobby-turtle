@@ -32,7 +32,7 @@ use utoipauto::utoipauto;
 
 use crate::auth::{AuthSession, Backend, PermissionLevel};
 
-use self::telebot::bot_router;
+use self::{telebot::bot_router, user::user_router};
 
 #[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
@@ -121,15 +121,11 @@ pub fn app_router(
 
     let app_state = AppState::new(pool, key, settings.domain, bot);
 
-    let authenticated_routes = authenticated_routes();
-
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
-        .merge(authenticated_routes)
         .route("/resume", get(resume::resume_details))
-        .route("/sign-up", post(user::sign_up::register_new_user))
-        .route("/login", post(user::login))
         .route("/handler", get(cookie_handler))
+        .nest("/user", user_router())
         .nest("/bot", bot_router())
         .with_state(app_state)
         .layer(layers)
@@ -151,17 +147,6 @@ async fn cookie_handler(
         .path("/")
         .secure(true);
     Ok((jar.add(zz), "check the damn cookie".to_string()))
-}
-
-fn authenticated_routes() -> Router<AppState> {
-    Router::new()
-        .route("/logout", get(user::logout))
-        .route(
-            "/change-password",
-            put(user::change_password::change_password),
-        )
-        .route("/user-info", get(user::user_info))
-        .route_layer(login_required!(Backend))
 }
 
 #[allow(clippy::unused_async, dead_code)]

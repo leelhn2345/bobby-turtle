@@ -24,7 +24,7 @@ pub struct NewPassword {
 #[utoipa::path(
     put,
     tag="user",
-    path="/change-password",
+    path="/user/change-password",
     responses(
         (status = StatusCode::OK, description = "password changed")
     )
