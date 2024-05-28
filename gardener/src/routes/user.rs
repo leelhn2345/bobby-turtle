@@ -204,7 +204,7 @@ pub async fn logout(
 ) -> Result<(CookieJar, Json<Value>), UserError> {
     match auth_session.logout().await {
         Ok(_) => Ok((
-            jar.remove(Cookie::build("userInfo")),
+            jar.remove(Cookie::build("userInfo").path("/")),
             Json(json!({"message":"user logged out"})),
         )),
         Err(e) => Err(UserError::UnknownError(e.into())),
