@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use axum::{
     extract::State,
     http::StatusCode,
-    response::{IntoResponse, Redirect},
+    response::IntoResponse,
     routing::{get, post, put},
     Json, Router,
 };
@@ -12,6 +12,7 @@ use axum_login::login_required;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::PgPool;
 use tokio::task;
 use tower_sessions::cookie::{time::Duration, Cookie, SameSite};
 use utoipa::ToSchema;
@@ -165,15 +166,17 @@ impl IntoResponse for UserError {
     tag="user",
     path="/user/login",
     responses(
-        (status = StatusCode::OK, description = "user successfully logged in"),
+        (status = StatusCode::OK, body=User, description = "user successfully logged in"),
         (status = StatusCode::UNPROCESSABLE_ENTITY, description = "validation error"),
         (status = StatusCode::INTERNAL_SERVER_ERROR, description = "internal server error")
     )
 )]
 pub async fn login(
+    jar: CookieJar,
+    State(app): State<AppState>,
     mut auth_session: AuthSession,
     Json(login_creds): Json<LoginCredentials>,
-) -> Result<Redirect, UserError> {
+) -> Result<CookieJar, UserError> {
     let user = match auth_session.authenticate(login_creds).await {
         Ok(Some(user)) => user,
         Ok(None) => {
@@ -186,12 +189,29 @@ pub async fn login(
         return Err(UserError::UnknownError(anyhow!("can't log in")));
     }
 
-    Ok(Redirect::to("/user/user-info"))
+    let user = get_user_info(&app.pool, user.user_id).await?;
+
+    let permission_cookie = Cookie::build((
+        "userInfo",
+        json!({
+            "firstName":user.first_name,
+            "lastName":user.last_name,
+            "permission":user.permission_level
+        })
+        .to_string(),
+    ))
+    .http_only(true)
+    .same_site(SameSite::None)
+    .secure(true)
+    .max_age(Duration::weeks(2))
+    .path("/");
+
+    Ok(jar.add(permission_cookie))
 }
 
 /// user logout
 #[utoipa::path(
-    get,
+    post,
     tag="user",
     path="/user/logout",
     responses(
@@ -211,6 +231,15 @@ pub async fn logout(
     }
 }
 
+/// get user info based on `user_id`
+async fn get_user_info(pool: &PgPool, user_id: Uuid) -> Result<User, UserError> {
+    let user: User = sqlx::query_as("select * from users where user_id = $1")
+        .bind(user_id)
+        .fetch_one(pool)
+        .await?;
+    Ok(user)
+}
+
 /// user info
 ///
 /// more fields will be shown than what is shown in the schema.
@@ -223,42 +252,23 @@ pub async fn logout(
     )
 )]
 pub async fn user_info(
-    jar: CookieJar,
     auth_session: AuthSession,
     State(app): State<AppState>,
-) -> Result<(CookieJar, Json<User>), UserError> {
+) -> Result<Json<User>, UserError> {
     let Some(verified_user) = auth_session.user else {
         return Err(anyhow!("user is not registered in auth session").into());
     };
 
     let pool = app.pool;
 
-    let user: User = sqlx::query_as("select * from users where user_id = $1")
-        .bind(verified_user.user_id)
-        .fetch_one(&pool)
-        .await?;
+    let user = get_user_info(&pool, verified_user.user_id).await?;
 
-    let permission_cookie = Cookie::build((
-        "userInfo",
-        json!({
-            "firstName":user.first_name,
-            "lastName":user.last_name,
-            "permission":user.permission_level
-        })
-        .to_string(),
-    ))
-    .http_only(true)
-    .same_site(SameSite::None)
-    .max_age(Duration::weeks(2))
-    .path("/")
-    .secure(true);
-
-    Ok((jar.add(permission_cookie), Json(user)))
+    Ok(Json(user))
 }
 
 pub fn user_router() -> Router<AppState> {
     Router::new()
-        .route("/logout", get(logout))
+        .route("/logout", post(logout))
         .route("/change-password", put(change_password::change_password))
         .route("/user-info", get(user_info))
         .route_layer(login_required!(Backend))
