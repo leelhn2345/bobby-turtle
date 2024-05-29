@@ -5,7 +5,7 @@ pub mod user;
 
 use axum::{
     body::Body,
-    http::{Request, Response, StatusCode},
+    http::{header::CONTENT_TYPE, Request, Response, StatusCode},
     routing::get,
     Router,
 };
@@ -14,7 +14,7 @@ use axum_login::{predicate_required, AuthManagerLayerBuilder};
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tower_sessions::{
     cookie::{time::Duration, Cookie, Key, SameSite},
     Expiry, SessionManagerLayer,
@@ -63,6 +63,11 @@ impl AppState {
 }
 
 pub fn app_router(session_store: PostgresStore, pool: PgPool, bot: Bot) -> Router {
+    let cors_layer = CorsLayer::new()
+        .allow_origin(["http://localhost:3000".parse().unwrap()])
+        .allow_headers([CONTENT_TYPE])
+        .allow_credentials(true);
+
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(|request: &Request<Body>| {
             let request_id = uuid::Uuid::new_v4();
@@ -96,7 +101,10 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool, bot: Bot) -> Route
     let backend = Backend::new(pool.clone());
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
-    let layers = ServiceBuilder::new().layer(trace_layer).layer(auth_layer);
+    let layers = ServiceBuilder::new()
+        .layer(trace_layer)
+        .layer(auth_layer)
+        .layer(cors_layer);
 
     let app_state = AppState::new(pool, bot);
 

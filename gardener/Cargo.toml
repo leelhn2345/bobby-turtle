@@ -12,7 +12,7 @@ indexmap = "2.2.6"
 password-auth = "1.0.0"
 passwords = "3.1.16"
 tower = "0.4.13"
-tower-http = { version = "0.5.2", features = ["trace"] }
+tower-http = { version = "0.5.2", features = ["trace", "cors"] }
 tower-sessions = { version = "0.12.2", default-features = false, features = ["signed"] }
 tower-sessions-sqlx-store = { version = "0.12.0", features = ["postgres"] }
 utoipa = { version = "4.2.0", features = ["axum_extras"] }
@@ -27,13 +27,13 @@ gaia = { version = "0.1.0", path = "../gaia" }
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
+teloxide.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 turtle-bot = { version = "0.1.0", path = "../turtle-bot" }
 uuid.workspace = true
-teloxide.workspace = true
 
 [lints]
 workspace = true
