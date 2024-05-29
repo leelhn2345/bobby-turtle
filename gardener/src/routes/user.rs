@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use tokio::task;
-use tower_sessions::cookie::{time::Duration, Cookie, SameSite};
+use tower_sessions::cookie::Cookie;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
@@ -191,7 +191,7 @@ pub async fn login(
 
     let user = get_user_info(&app.pool, user.user_id).await?;
 
-    let permission_cookie = Cookie::build((
+    let permission_cookie = Cookie::new(
         "userInfo",
         json!({
             "firstName":user.first_name,
@@ -199,12 +199,7 @@ pub async fn login(
             "permission":user.permission_level
         })
         .to_string(),
-    ))
-    .http_only(true)
-    .same_site(SameSite::None)
-    .secure(true)
-    .max_age(Duration::weeks(2))
-    .path("/");
+    );
 
     Ok(jar.add(permission_cookie))
 }
@@ -224,8 +219,8 @@ pub async fn logout(
 ) -> Result<(CookieJar, Json<Value>), UserError> {
     match auth_session.logout().await {
         Ok(_) => Ok((
-            jar.remove(Cookie::build("userInfo").path("/"))
-                .remove(Cookie::build("gardener.id").path("/")),
+            jar.remove(Cookie::from("userInfo"))
+                .remove(Cookie::from("gardener.id")),
             Json(json!({"message":"user logged out"})),
         )),
         Err(e) => Err(UserError::UnknownError(e.into())),
