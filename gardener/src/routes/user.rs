@@ -224,7 +224,8 @@ pub async fn logout(
 ) -> Result<(CookieJar, Json<Value>), UserError> {
     match auth_session.logout().await {
         Ok(_) => Ok((
-            jar.remove(Cookie::build("userInfo").path("/")),
+            jar.remove(Cookie::build("userInfo").path("/"))
+                .remove(Cookie::build("gardener.id").path("/")),
             Json(json!({"message":"user logged out"})),
         )),
         Err(e) => Err(UserError::UnknownError(e.into())),
@@ -268,10 +269,10 @@ pub async fn user_info(
 
 pub fn user_router() -> Router<AppState> {
     Router::new()
-        .route("/logout", post(logout))
         .route("/change-password", put(change_password::change_password))
         .route("/user-info", get(user_info))
         .route_layer(login_required!(Backend))
+        .route("/logout", post(logout))
         .route("/sign-up", post(sign_up::register_new_user))
         .route("/login", post(login))
 }

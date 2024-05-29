@@ -14,10 +14,7 @@ use axum_login::{predicate_required, AuthManagerLayerBuilder};
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
-use tower_http::{
-    cors::{Any, CorsLayer},
-    trace::TraceLayer,
-};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tower_sessions::{
     cookie::{time::Duration, Cookie, Key, SameSite},
     Expiry, SessionManagerLayer,
