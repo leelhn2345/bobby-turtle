@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "drop schema if exists tower_sessions cascade",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bbbd15adb951775ef6e5c4aa1820d5425fc2d582762d0a75d38350a1cba9df78"
+}
