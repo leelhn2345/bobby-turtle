@@ -11,12 +11,13 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use axum_login::{predicate_required, AuthManagerLayerBuilder};
+use gaia::app::AppSettings;
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tower_sessions::{
-    cookie::{time::Duration, Cookie, Key, SameSite},
+    cookie::{time::Duration, Cookie, Expiration, Key},
     Expiry, SessionManagerLayer,
 };
 use tower_sessions_sqlx_store::PostgresStore;
@@ -62,9 +63,14 @@ impl AppState {
     }
 }
 
-pub fn app_router(session_store: PostgresStore, pool: PgPool, bot: Bot) -> Router {
+pub fn app_router(
+    settings: &AppSettings,
+    session_store: PostgresStore,
+    pool: PgPool,
+    bot: Bot,
+) -> Router {
     let cors_layer = CorsLayer::new()
-        .allow_origin(["http://localhost:3000".parse().unwrap()])
+        .allow_origin([settings.request_origin.parse().unwrap()])
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
@@ -93,8 +99,7 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool, bot: Bot) -> Route
     let key = Key::generate();
 
     let session_layer = SessionManagerLayer::new(session_store)
-        .with_expiry(Expiry::OnInactivity(Duration::weeks(2)))
-        .with_same_site(SameSite::None)
+        .with_expiry(Expiry::OnInactivity(Duration::days(30)))
         .with_name("gardener.id")
         .with_signed(key.clone());
 
@@ -123,12 +128,7 @@ pub fn app_router(session_store: PostgresStore, pool: PgPool, bot: Bot) -> Route
 
 #[utoipa::path(get, path = "/handler", tag = "test")]
 async fn cookie_handler(jar: CookieJar) -> Result<(CookieJar, String), StatusCode> {
-    let zz = Cookie::build(("fefe", "CVEve"))
-        .http_only(true)
-        .same_site(SameSite::None)
-        .max_age(Duration::weeks(2))
-        .path("/")
-        .secure(true);
+    let zz = Cookie::build(("turtle", "check me in dev tools")).expires(Expiration::Session);
     Ok((jar.add(zz), "check the damn cookie".to_string()))
 }
 
