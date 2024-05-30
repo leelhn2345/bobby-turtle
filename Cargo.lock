@@ -1044,6 +1044,8 @@ dependencies = [
  "indexmap",
  "password-auth",
  "passwords",
+ "reqwest 0.12.4",
+ "secrecy",
  "serde",
  "serde_json",
  "sqlx",
