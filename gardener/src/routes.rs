@@ -12,6 +12,7 @@ use axum::{
 };
 use axum_login::{predicate_required, AuthManagerLayerBuilder};
 use gaia::app::AppSettings;
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
@@ -70,7 +71,7 @@ pub fn app_router(
     bot: Bot,
 ) -> Router {
     let cors_layer = CorsLayer::new()
-        .allow_origin([settings.request_origin.parse().unwrap()])
+        .allow_origin([settings.request_origin.expose_secret().parse().unwrap()])
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
@@ -96,7 +97,7 @@ pub fn app_router(
             },
         );
 
-    let key = Key::try_from(settings.cookie_key.as_bytes())
+    let key = Key::try_from(settings.cookie_key.expose_secret().as_bytes())
         .expect("error generating cookie key. must be at least 64 bytes.");
 
     let session_layer = SessionManagerLayer::new(session_store)
