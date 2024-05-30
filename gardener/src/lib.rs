@@ -24,12 +24,6 @@ pub async fn start_app(settings: Settings, pool: PgPool, bot: Bot) {
 
     let session_store = PostgresStore::new(pool.clone());
 
-    // past user session id wouldn't work anymore hence dropping it
-    sqlx::query!(r#"drop schema if exists tower_sessions cascade"#)
-        .execute(&pool)
-        .await
-        .unwrap();
-
     session_store
         .migrate()
         .await

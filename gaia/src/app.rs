@@ -7,4 +7,5 @@ pub struct AppSettings {
     pub host: String,
     pub public_url: String,
     pub request_origin: String,
+    pub cookie_key: String,
 }
