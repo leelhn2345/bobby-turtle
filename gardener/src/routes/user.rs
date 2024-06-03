@@ -108,7 +108,10 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
-            Self::Unverified => (StatusCode::UNAUTHORIZED, "user is unverified".to_owned()),
+            Self::Unverified => (
+                StatusCode::UNAUTHORIZED,
+                "please check email for verification link".to_owned(),
+            ),
             Self::UsernameTaken => (StatusCode::CONFLICT, "username is taken".to_owned()),
             Self::Validation(e) => {
                 tracing::error!("{e:#?}");
