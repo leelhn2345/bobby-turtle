@@ -40,7 +40,7 @@ pub async fn start_app(settings: Settings, pool: PgPool, bot: Bot) {
             .continuously_delete_expired(tokio::time::Duration::from_secs(1800)),
     );
 
-    let app_router = app_router(&settings.application, session_store, pool, bot);
+    let app_router = app_router(settings, session_store, pool, bot);
 
     axum::serve(listener, app_router.into_make_service())
         .await

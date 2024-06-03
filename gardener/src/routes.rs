@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use axum_login::{predicate_required, AuthManagerLayerBuilder};
-use gaia::app::AppSettings;
+use gaia::{email::EmailSettings, Settings};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use teloxide::Bot;
@@ -56,22 +56,28 @@ impl Modify for SecurityAddon {
 pub struct AppState {
     pool: PgPool,
     bot: Bot,
+    email: EmailSettings,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, bot: Bot) -> Self {
-        Self { pool, bot }
+    pub fn new(pool: PgPool, bot: Bot, email: EmailSettings) -> Self {
+        Self { pool, bot, email }
     }
 }
 
 pub fn app_router(
-    settings: &AppSettings,
+    settings: Settings,
     session_store: PostgresStore,
     pool: PgPool,
     bot: Bot,
 ) -> Router {
     let cors_layer = CorsLayer::new()
-        .allow_origin([settings.request_origin.expose_secret().parse().unwrap()])
+        .allow_origin([settings
+            .application
+            .request_origin
+            .expose_secret()
+            .parse()
+            .unwrap()])
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
@@ -97,7 +103,7 @@ pub fn app_router(
             },
         );
 
-    let key = Key::try_from(settings.cookie_key.expose_secret().as_bytes())
+    let key = Key::try_from(settings.application.cookie_key.expose_secret().as_bytes())
         .expect("error generating cookie key. must be at least 64 bytes.");
 
     let session_layer = SessionManagerLayer::new(session_store)
@@ -113,7 +119,7 @@ pub fn app_router(
         .layer(auth_layer)
         .layer(cors_layer);
 
-    let app_state = AppState::new(pool, bot);
+    let app_state = AppState::new(pool, bot, settings.email);
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))

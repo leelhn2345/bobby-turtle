@@ -1,11 +1,13 @@
 pub mod app;
 pub mod database;
+pub mod email;
 pub mod environment;
 pub mod stickers;
 
 use app::AppSettings;
 pub use database::get_connection_pool;
 use database::DatabaseSettings;
+use email::EmailSettings;
 use environment::Environment;
 use figment::{
     providers::{Env, Format, Yaml},
@@ -20,6 +22,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt};
 #[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub application: AppSettings,
+    pub email: EmailSettings,
     pub database: DatabaseSettings,
     pub stickers: Stickers,
 }
