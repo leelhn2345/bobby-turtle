@@ -5,4 +5,6 @@ use serde::Deserialize;
 pub struct EmailSettings {
     pub api_key: SecretString,
     pub api: String,
+    pub base_url: String,
+    pub timeout_milliseconds: u64,
 }
