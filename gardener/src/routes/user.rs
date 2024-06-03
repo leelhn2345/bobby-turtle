@@ -81,6 +81,9 @@ pub enum UserError {
     #[error("invalid credentials")]
     InvalidCredentials,
 
+    #[error("unverified user")]
+    Unverified,
+
     #[error("new password is same as old password")]
     SamePassword,
 
@@ -105,6 +108,7 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
+            Self::Unverified => (StatusCode::UNAUTHORIZED, "user is unverified".to_owned()),
             Self::UsernameTaken => (StatusCode::CONFLICT, "username is taken".to_owned()),
             Self::Validation(e) => {
                 tracing::error!("{e:#?}");
@@ -184,6 +188,10 @@ pub async fn login(
         }
         Err(e) => return Err(UserError::UnknownError(e.into())),
     };
+
+    if !user.verified {
+        return Err(UserError::Unverified);
+    }
 
     if auth_session.login(&user).await.is_err() {
         return Err(UserError::UnknownError(anyhow!("can't log in")));
