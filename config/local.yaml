@@ -4,4 +4,4 @@ application:
 database:
   require_ssl: false
 email:
-  base_url: "localhost"
+  base_url: "localhost:3000"
