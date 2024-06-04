@@ -1,25 +1,118 @@
 use anyhow::Context;
 use axum::extract::{Query, State};
 use chrono::{DateTime, Duration, Utc};
+use password_auth::generate_hash;
 use rand::{
     distributions::{Alphanumeric, DistString},
     thread_rng,
 };
 use reqwest::StatusCode;
 use serde::Deserialize;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
+use tokio::task;
 use utoipa::IntoParams;
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::routes::AppState;
 
-use super::UserError;
+use super::{sign_up::analyze_password, UserError};
 
-#[utoipa::path(post, tag = "user", path = "/user/password/reset-confirm")]
+#[derive(Validate, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct NewPasswordQuery {
+    #[validate(custom(function = "analyze_password"))]
+    new_password: String,
+    reset_token: String,
+}
+#[utoipa::path(
+    post,
+    tag = "user",
+    params(
+        NewPasswordQuery
+    ),
+    path = "/user/password/reset-confirm",
+    responses(
+        (status=StatusCode::ACCEPTED, description="password changed"),
+        (status=StatusCode::UNPROCESSABLE_ENTITY, description="password doesn't conform to valid password schema"),
+        (status=StatusCode::INTERNAL_SERVER_ERROR, description="internal server error"),
+    )
+)]
 #[tracing::instrument(skip_all)]
-pub async fn password_reset_confirm() {
-    todo!()
+pub async fn password_reset_confirm(
+    State(app): State<AppState>,
+    Query(query): Query<NewPasswordQuery>,
+) -> Result<(), UserError> {
+    query.validate().map_err(UserError::Validation)?;
+    let mut tx = app
+        .pool
+        .begin()
+        .await
+        .context("failed to acquire postgres connection from pool")?;
+
+    let user_id = get_user_id_from_token(&mut tx, &query.reset_token)
+        .await
+        .context("failed to get data from database")?
+        .ok_or(UserError::NotFound)?;
+
+    let password_hash = task::spawn_blocking(|| generate_hash(query.new_password))
+        .await
+        .context("error generating password hash in non-blocking thread")?;
+
+    insert_new_password_for_user(&mut tx, password_hash, user_id)
+        .await
+        .context("can't set new password for user")?;
+    delete_reset_token(&mut tx, &query.reset_token)
+        .await
+        .context("can't delete reset token")?;
+    tx.commit()
+        .await
+        .context("failed to commit sql transaction to insert new user")?;
+
+    Ok(())
+}
+
+async fn delete_reset_token(
+    tx: &mut Transaction<'_, Postgres>,
+    token: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "delete from reset_password_tokens where reset_token = $1",
+        token
+    )
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
+async fn insert_new_password_for_user(
+    tx: &mut Transaction<'_, Postgres>,
+    password_hash: String,
+    user_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "update users 
+        set password_hash = $1
+        where user_id = $2
+        ",
+        password_hash,
+        user_id
+    )
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+async fn get_user_id_from_token(
+    tx: &mut Transaction<'_, Postgres>,
+    token: &str,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    let res = sqlx::query!(
+        "select user_id from reset_password_tokens where reset_token = $1",
+        token
+    )
+    .fetch_optional(&mut **tx)
+    .await?;
+    Ok(res.map(|x| x.user_id))
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -46,28 +139,38 @@ pub async fn check_reset_token_validity(
     State(app): State<AppState>,
     Query(query): Query<TokenValidityQuery>,
 ) -> Result<(), UserError> {
-    let pool = app.pool;
+    let mut tx = app
+        .pool
+        .begin()
+        .await
+        .context("can't get connection to db")?;
 
-    let expiry_datetime = get_password_reset_token(&pool, &query.reset_token)
+    let expiry_datetime = get_password_reset_token_expiry(&mut tx, &query.reset_token)
         .await
         .context("failed to retreive expiry datetime with associated reset token")?
-        .ok_or(UserError::UserNotFound)?;
+        .ok_or(UserError::NotFound)?;
 
     if Utc::now() >= expiry_datetime {
+        delete_reset_token(&mut tx, &query.reset_token)
+            .await
+            .context("can't delete invalid token")?;
+        tx.commit()
+            .await
+            .context("failed to commit transaction to delete token")?;
         return Err(UserError::ExpiredToken);
     }
     Ok(())
 }
 
-async fn get_password_reset_token(
-    pool: &PgPool,
+async fn get_password_reset_token_expiry(
+    tx: &mut Transaction<'_, Postgres>,
     reset_token: &str,
 ) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
     let res = sqlx::query!(
         "select expires from reset_password_tokens where reset_token = $1",
         reset_token
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut **tx)
     .await?;
     Ok(res.map(|x| x.expires))
 }
@@ -101,7 +204,7 @@ pub async fn password_reset(
     let user_id = get_user_id_from_email(&pool, &query.email)
         .await
         .context("failed to retrieve user_id associated with username/email")?
-        .ok_or(UserError::UserNotFound)?;
+        .ok_or(UserError::NotFound)?;
 
     let reset_token = generate_reset_token();
 

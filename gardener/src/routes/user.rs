@@ -99,8 +99,8 @@ pub enum UserError {
     #[error(transparent)]
     UnknownError(#[from] anyhow::Error),
 
-    #[error("no user found")]
-    UserNotFound,
+    #[error("resource(s) not found")]
+    NotFound,
 }
 
 impl IntoResponse for UserError {
@@ -111,7 +111,7 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
-            Self::UserNotFound => (StatusCode::NOT_FOUND, "request not found".to_owned()),
+            Self::NotFound => (StatusCode::NOT_FOUND, "resource(s) not found".to_owned()),
             Self::Unverified => (
                 StatusCode::UNAUTHORIZED,
                 "please check email for verification link".to_owned(),
@@ -264,14 +264,14 @@ pub async fn user_info(
 
 pub fn user_router() -> Router<AppState> {
     Router::new()
-        .route("/password/change", put(password_change::change_password))
+        .route("/password/change", post(password_change::change_password))
         .route("/user-info", get(user_info))
         .route_layer(login_required!(Backend))
         .route(
             "/password/reset",
             post(password_reset).get(check_reset_token_validity),
         )
-        .route("/password/reset-confirm", put(password_reset_confirm))
+        .route("/password/reset-confirm", post(password_reset_confirm))
         .route("/logout", post(logout))
         .route("/sign-up", post(sign_up::register_new_user))
         .route(

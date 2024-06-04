@@ -22,7 +22,7 @@ pub struct NewPassword {
 }
 
 #[utoipa::path(
-    put,
+    post,
     tag="user",
     path="/user/password/change",
     responses(
