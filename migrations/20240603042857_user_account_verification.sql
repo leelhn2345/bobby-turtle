@@ -15,5 +15,5 @@ commit;
 
 create table verification_tokens (
   verification_token text not null primary key,
-  user_id uuid not null references users (user_id)
+  user_id uuid not null references users (user_id) on delete cascade
 );

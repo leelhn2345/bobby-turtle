@@ -1,5 +1,5 @@
 use crate::auth::{AuthSession, Backend, PermissionLevel};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use axum::{
     extract::State,
     http::StatusCode,
@@ -13,7 +13,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::PgPool;
-use tokio::task;
 use tower_sessions::cookie::Cookie;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -23,8 +22,9 @@ use super::AppState;
 
 pub mod change_password;
 pub mod sign_up;
+pub mod sign_up_verification;
 
-#[derive(Deserialize, Serialize, sqlx::FromRow, Validate, ToSchema)]
+#[derive(Deserialize, Serialize, Clone, sqlx::FromRow, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::struct_field_names)]
 pub struct User {
@@ -75,8 +75,8 @@ pub enum UserError {
     #[error("username is taken")]
     UsernameTaken,
 
-    #[error(transparent)]
-    Validation(#[from] ValidationErrors),
+    #[error("validation error")]
+    Validation(#[source] ValidationErrors),
 
     #[error("invalid credentials")]
     InvalidCredentials,
@@ -84,20 +84,14 @@ pub enum UserError {
     #[error("unverified user")]
     Unverified,
 
+    #[error("unknown verification token")]
+    UnknownToken,
+
     #[error("new password is same as old password")]
     SamePassword,
 
-    #[error("unknown error")]
+    #[error(transparent)]
     UnknownError(#[from] anyhow::Error),
-
-    #[error(transparent)]
-    Database(#[from] sqlx::Error),
-
-    #[error(transparent)]
-    Authentication(#[from] axum_login::Error<Backend>),
-
-    #[error(transparent)]
-    TaskJoin(#[from] task::JoinError),
 }
 
 impl IntoResponse for UserError {
@@ -112,6 +106,7 @@ impl IntoResponse for UserError {
                 StatusCode::UNAUTHORIZED,
                 "please check email for verification link".to_owned(),
             ),
+            Self::UnknownToken => (StatusCode::UNAUTHORIZED, "unknown token".to_owned()),
             Self::UsernameTaken => (StatusCode::CONFLICT, "username is taken".to_owned()),
             Self::Validation(e) => {
                 tracing::error!("{e:#?}");
@@ -132,29 +127,6 @@ impl IntoResponse for UserError {
             ),
 
             Self::UnknownError(e) => {
-                tracing::error!("{e:#?}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_owned(),
-                )
-            }
-
-            Self::Database(e) => {
-                tracing::error!("{e:#?}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_owned(),
-                )
-            }
-
-            Self::Authentication(e) => {
-                tracing::error!("{e:#?}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_owned(),
-                )
-            }
-            Self::TaskJoin(e) => {
                 tracing::error!("{e:#?}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -200,7 +172,9 @@ pub async fn login(
         return Err(UserError::UnknownError(anyhow!("can't log in")));
     }
 
-    let user = get_user_info(&app.pool, user.user_id).await?;
+    let user = get_user_info(&app.pool, user.user_id)
+        .await
+        .context("cannot get user info")?;
 
     let permission_cookie = Cookie::new(
         "userInfo",
@@ -239,7 +213,7 @@ pub async fn logout(
 }
 
 /// get user info based on `user_id`
-async fn get_user_info(pool: &PgPool, user_id: Uuid) -> Result<User, UserError> {
+async fn get_user_info(pool: &PgPool, user_id: Uuid) -> Result<User, sqlx::Error> {
     let user: User = sqlx::query_as("select * from users where user_id = $1")
         .bind(user_id)
         .fetch_one(pool)
@@ -268,7 +242,9 @@ pub async fn user_info(
 
     let pool = app.pool;
 
-    let user = get_user_info(&pool, verified_user.user_id).await?;
+    let user = get_user_info(&pool, verified_user.user_id)
+        .await
+        .context("cannot get user info")?;
 
     Ok(Json(user))
 }
@@ -280,5 +256,9 @@ pub fn user_router() -> Router<AppState> {
         .route_layer(login_required!(Backend))
         .route("/logout", post(logout))
         .route("/sign-up", post(sign_up::register_new_user))
+        .route(
+            "/sign-up-verification/:token",
+            put(sign_up_verification::sign_up_verification),
+        )
         .route("/login", post(login))
 }

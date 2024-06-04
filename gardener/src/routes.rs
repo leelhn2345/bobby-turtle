@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use axum_login::{predicate_required, AuthManagerLayerBuilder};
-use gaia::{email::EmailSettings, Settings};
+use gaia::Settings;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use teloxide::Bot;
@@ -30,7 +30,10 @@ use utoipa::{
 use utoipa_swagger_ui::SwaggerUi;
 use utoipauto::utoipauto;
 
-use crate::auth::{AuthSession, Backend, PermissionLevel};
+use crate::{
+    auth::{AuthSession, Backend, PermissionLevel},
+    email_client::EmailClient,
+};
 
 use self::{telebot::bot_router, test::test_router, user::user_router};
 
@@ -56,12 +59,16 @@ impl Modify for SecurityAddon {
 pub struct AppState {
     pool: PgPool,
     bot: Bot,
-    email: EmailSettings,
+    email_client: EmailClient,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, bot: Bot, email: EmailSettings) -> Self {
-        Self { pool, bot, email }
+    pub fn new(pool: PgPool, bot: Bot, email_client: EmailClient) -> Self {
+        Self {
+            pool,
+            bot,
+            email_client,
+        }
     }
 }
 
@@ -119,7 +126,9 @@ pub fn app_router(
         .layer(auth_layer)
         .layer(cors_layer);
 
-    let app_state = AppState::new(pool, bot, settings.email);
+    let email_client = EmailClient::new(settings.email);
+
+    let app_state = AppState::new(pool, bot, email_client);
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))

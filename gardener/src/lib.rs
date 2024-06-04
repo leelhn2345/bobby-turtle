@@ -1,4 +1,5 @@
 mod auth;
+mod email_client;
 mod routes;
 
 use axum_login::tower_sessions::ExpiredDeletion;

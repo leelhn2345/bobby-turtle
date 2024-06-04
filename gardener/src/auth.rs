@@ -28,13 +28,13 @@ pub enum AuthError {
     TaskJoin(#[from] task::JoinError),
 }
 
-#[derive(PartialEq, sqlx::Type, Serialize, Deserialize, Clone, Debug)]
+#[derive(PartialEq, sqlx::Type, Serialize, Deserialize, Clone, Debug, Eq, PartialOrd, Ord)]
 #[sqlx(type_name = "permissions", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum PermissionLevel {
-    Alpha,
-    Admin,
     Member,
+    Admin,
+    Alpha,
 }
 
 impl PermissionLevel {
