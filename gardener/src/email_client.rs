@@ -47,7 +47,7 @@ impl EmailClient {
         email: String,
         token: String,
     ) -> Result<(), reqwest::Error> {
-        let confirmation_link = format!("{}/account_verification/{}", self.base_url, token);
+        let confirmation_link = format!("{}/account_verification?token={}", self.base_url, token);
 
         let html_content = format!(
             "<html>
@@ -60,7 +60,7 @@ impl EmailClient {
             <p>Digital Garden</p>
             </body></html>"
         );
-        let zzz = json!({
+        let email_content = json!({
            "sender":{
               "name":"Digital Garden",
               "email":"noreply@alaladin.com"
@@ -77,11 +77,18 @@ impl EmailClient {
         });
         self.http_client
             .post(self.api.clone())
-            .json(&zzz)
+            .json(&email_content)
             .send()
             .await?
             .error_for_status()?;
 
+        Ok(())
+    }
+
+    pub async fn send_password_reset_email(
+        name: String,
+        email: String,
+    ) -> Result<(), reqwest::Error> {
         Ok(())
     }
 }
