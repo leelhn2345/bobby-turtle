@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select user_id, username, password_hash,permission_level as \"permission_level:PermissionLevel\" \n            from users where user_id = $1\n            ",
+  "query": "\n            select \n            user_id, \n            username, \n            password_hash,\n            permission_level as \"permission_level:PermissionLevel\",\n            verified\n            from users where user_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -33,6 +33,11 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "verified",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -44,8 +49,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "399e237d0d44435b877d86fd0cc2c393d73d62e48890ac9d8a1233b28f5353ff"
+  "hash": "ebba6e8e2741df21f30eb6c74a89c62b0d1df365c374351ac6553d3cc28126da"
 }
