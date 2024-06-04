@@ -18,9 +18,12 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
+use self::password_reset::{check_reset_token_validity, password_reset, password_reset_confirm};
+
 use super::AppState;
 
-pub mod change_password;
+pub mod password_change;
+pub mod password_reset;
 pub mod sign_up;
 pub mod sign_up_verification;
 
@@ -84,14 +87,20 @@ pub enum UserError {
     #[error("unverified user")]
     Unverified,
 
-    #[error("unknown verification token")]
+    #[error("unknown token")]
     UnknownToken,
+
+    #[error("expired token")]
+    ExpiredToken,
 
     #[error("new password is same as old password")]
     SamePassword,
 
     #[error(transparent)]
     UnknownError(#[from] anyhow::Error),
+
+    #[error("resource(s) not found")]
+    NotFound,
 }
 
 impl IntoResponse for UserError {
@@ -102,12 +111,16 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
+            Self::NotFound => (StatusCode::NOT_FOUND, "resource(s) not found".to_owned()),
             Self::Unverified => (
                 StatusCode::UNAUTHORIZED,
                 "please check email for verification link".to_owned(),
             ),
             Self::UnknownToken => (StatusCode::UNAUTHORIZED, "unknown token".to_owned()),
+            Self::ExpiredToken => (StatusCode::GONE, "expired token".to_owned()),
+
             Self::UsernameTaken => (StatusCode::CONFLICT, "username is taken".to_owned()),
+
             Self::Validation(e) => {
                 tracing::error!("{e:#?}");
                 let fields: Vec<&str> = e.field_errors().into_keys().collect();
@@ -251,13 +264,18 @@ pub async fn user_info(
 
 pub fn user_router() -> Router<AppState> {
     Router::new()
-        .route("/change-password", put(change_password::change_password))
+        .route("/password/change", post(password_change::change_password))
         .route("/user-info", get(user_info))
         .route_layer(login_required!(Backend))
+        .route(
+            "/password/reset",
+            post(password_reset).get(check_reset_token_validity),
+        )
+        .route("/password/reset-confirm", post(password_reset_confirm))
         .route("/logout", post(logout))
         .route("/sign-up", post(sign_up::register_new_user))
         .route(
-            "/sign-up-verification/:token",
+            "/sign-up-verification",
             put(sign_up_verification::sign_up_verification),
         )
         .route("/login", post(login))
