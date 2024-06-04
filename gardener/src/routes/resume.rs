@@ -31,7 +31,7 @@ impl IntoResponse for AboutPageError {
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ResumeDetails {
-    about_me: String,
+    about_me: Vec<String>,
     skills: Skills,
     job_experiences: Vec<JobExperience>,
     projects: Vec<Projects>,
@@ -165,7 +165,7 @@ async fn get_projects(pool: &PgPool) -> Result<Vec<Projects>, AboutPageError> {
     Ok(projects)
 }
 
-async fn get_about_me(pool: &PgPool) -> Result<String, AboutPageError> {
+async fn get_about_me(pool: &PgPool) -> Result<Vec<String>, AboutPageError> {
     let about_me = sqlx::query!("select about_me from about_me")
         .fetch_one(pool)
         .await?;
