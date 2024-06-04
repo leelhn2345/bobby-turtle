@@ -204,7 +204,7 @@ pub async fn login(
 
 /// user logout
 #[utoipa::path(
-    post,
+    put,
     tag="user",
     path="/user/logout",
     responses(
@@ -272,7 +272,7 @@ pub fn user_router() -> Router<AppState> {
             post(password_reset).get(check_reset_token_validity),
         )
         .route("/password/reset-confirm", post(password_reset_confirm))
-        .route("/logout", post(logout))
+        .route("/logout", put(logout))
         .route("/sign-up", post(sign_up::register_new_user))
         .route(
             "/sign-up-verification",
