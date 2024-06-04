@@ -1,5 +1,7 @@
 application:
   host: 0.0.0.0
-  request_origin: https://digital-garden-haha.vercel.app
+  request_origin: https://www.alaladin.com
 database:
   require_ssl: true
+email:
+  base_url: https://www.alaladin.com

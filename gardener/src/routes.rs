@@ -1,6 +1,7 @@
 mod health_check;
 mod resume;
 mod telebot;
+mod test;
 pub mod user;
 
 use axum::{
@@ -9,15 +10,15 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_extra::extract::CookieJar;
 use axum_login::{predicate_required, AuthManagerLayerBuilder};
-use gaia::app::AppSettings;
+use gaia::Settings;
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use teloxide::Bot;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tower_sessions::{
-    cookie::{time::Duration, Cookie, Expiration, Key},
+    cookie::{time::Duration, Key},
     Expiry, SessionManagerLayer,
 };
 use tower_sessions_sqlx_store::PostgresStore;
@@ -29,9 +30,12 @@ use utoipa::{
 use utoipa_swagger_ui::SwaggerUi;
 use utoipauto::utoipauto;
 
-use crate::auth::{AuthSession, Backend, PermissionLevel};
+use crate::{
+    auth::{AuthSession, Backend, PermissionLevel},
+    email_client::EmailClient,
+};
 
-use self::{telebot::bot_router, user::user_router};
+use self::{telebot::bot_router, test::test_router, user::user_router};
 
 #[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
@@ -55,22 +59,32 @@ impl Modify for SecurityAddon {
 pub struct AppState {
     pool: PgPool,
     bot: Bot,
+    email_client: EmailClient,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, bot: Bot) -> Self {
-        Self { pool, bot }
+    pub fn new(pool: PgPool, bot: Bot, email_client: EmailClient) -> Self {
+        Self {
+            pool,
+            bot,
+            email_client,
+        }
     }
 }
 
 pub fn app_router(
-    settings: &AppSettings,
+    settings: Settings,
     session_store: PostgresStore,
     pool: PgPool,
     bot: Bot,
 ) -> Router {
     let cors_layer = CorsLayer::new()
-        .allow_origin([settings.request_origin.parse().unwrap()])
+        .allow_origin([settings
+            .application
+            .request_origin
+            .expose_secret()
+            .parse()
+            .unwrap()])
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
@@ -96,7 +110,8 @@ pub fn app_router(
             },
         );
 
-    let key = Key::generate();
+    let key = Key::try_from(settings.application.cookie_key.expose_secret().as_bytes())
+        .expect("error generating cookie key. must be at least 64 bytes.");
 
     let session_layer = SessionManagerLayer::new(session_store)
         .with_expiry(Expiry::OnInactivity(Duration::days(30)))
@@ -111,12 +126,14 @@ pub fn app_router(
         .layer(auth_layer)
         .layer(cors_layer);
 
-    let app_state = AppState::new(pool, bot);
+    let email_client = EmailClient::new(settings.email);
+
+    let app_state = AppState::new(pool, bot, email_client);
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
         .route("/resume", get(resume::resume_details))
-        .route("/handler", get(cookie_handler))
+        .nest("/test", test_router())
         .nest("/user", user_router())
         .nest("/bot", bot_router())
         .with_state(app_state)
@@ -124,12 +141,6 @@ pub fn app_router(
         .route("/", get(health_check::root))
         .route("/health_check", get(health_check::health_check))
         .fallback(|| async { (StatusCode::NOT_FOUND, "invalid api") })
-}
-
-#[utoipa::path(get, path = "/handler", tag = "test")]
-async fn cookie_handler(jar: CookieJar) -> Result<(CookieJar, String), StatusCode> {
-    let zz = Cookie::build(("turtle", "check me in dev tools")).expires(Expiration::Session);
-    Ok((jar.add(zz), "check the damn cookie".to_string()))
 }
 
 #[allow(clippy::unused_async, dead_code)]

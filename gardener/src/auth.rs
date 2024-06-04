@@ -28,13 +28,13 @@ pub enum AuthError {
     TaskJoin(#[from] task::JoinError),
 }
 
-#[derive(PartialEq, sqlx::Type, Serialize, Deserialize, Clone, Debug)]
+#[derive(PartialEq, sqlx::Type, Serialize, Deserialize, Clone, Debug, Eq, PartialOrd, Ord)]
 #[sqlx(type_name = "permissions", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum PermissionLevel {
-    Alpha,
-    Admin,
     Member,
+    Admin,
+    Alpha,
 }
 
 impl PermissionLevel {
@@ -50,17 +50,7 @@ pub struct AuthenticatedUser {
     pub username: String,
     password_hash: String,
     pub permission_level: PermissionLevel,
-}
-
-impl AuthenticatedUser {
-    pub fn new(user_id: Uuid, username: String, password_hash: String) -> Self {
-        Self {
-            user_id,
-            username,
-            password_hash,
-            permission_level: PermissionLevel::Member,
-        }
-    }
+    pub verified: bool,
 }
 
 impl AuthUser for AuthenticatedUser {
@@ -90,7 +80,12 @@ impl AuthnBackend for Backend {
         let user: Option<Self::User> = sqlx::query_as!(
             AuthenticatedUser,
             r#"
-            select user_id, username, password_hash, permission_level as "permission_level: PermissionLevel" 
+            select 
+            user_id, 
+            username, 
+            password_hash, 
+            permission_level as "permission_level: PermissionLevel",
+            verified
             from users where username = $1
             "#,
             creds.username
@@ -111,7 +106,12 @@ impl AuthnBackend for Backend {
         let user = sqlx::query_as!(
             AuthenticatedUser,
             r#"
-            select user_id, username, password_hash,permission_level as "permission_level:PermissionLevel" 
+            select 
+            user_id, 
+            username, 
+            password_hash,
+            permission_level as "permission_level:PermissionLevel",
+            verified
             from users where user_id = $1
             "#,
             user_id

@@ -1,28 +1,20 @@
+use anyhow::Context;
 use axum::{extract::State, Json};
 use password_auth::generate_hash;
 use passwords::analyzer;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use sqlx::{Postgres, Transaction};
 use tokio::task;
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
-use crate::{
-    auth::{AuthSession, AuthenticatedUser, PermissionLevel},
-    routes::AppState,
-};
+use crate::{auth::PermissionLevel, routes::AppState};
 
 use super::{User, UserError};
-
-#[derive(Deserialize, Validate, ToSchema)]
-pub struct NewUser {
-    #[serde(flatten)]
-    user_info: User,
-
-    #[validate(custom(function = "analyze_password"))]
-    #[schema(default = "1Q2w3e4r5t!~")]
-    password: String,
-}
 
 pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
     let analyzed = analyzer::analyze(password);
@@ -45,13 +37,31 @@ pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
+fn generate_subscription_token() -> String {
+    let mut rng = thread_rng();
+    std::iter::repeat_with(|| rng.sample(Alphanumeric))
+        .map(char::from)
+        .take(25)
+        .collect()
+}
+
+#[derive(Deserialize, Validate, ToSchema)]
+pub struct NewUser {
+    #[serde(flatten)]
+    user_info: User,
+
+    #[validate(custom(function = "analyze_password"))]
+    #[schema(default = "1Q2w3e4r5t!~")]
+    password: String,
+}
+
 /// new user
 #[utoipa::path(
     post,
     tag="user",
     path="/user/sign-up",
     responses(
-        (status = StatusCode::OK, description = "user successfully registered"),
+        (status = StatusCode::CREATED, description = "user successfully registered"),
         (status = StatusCode::CONFLICT, description = "username is taken"),
         (status = StatusCode::UNPROCESSABLE_ENTITY, description = "validation error"),
         (status = StatusCode::INTERNAL_SERVER_ERROR, description = "internal server error")
@@ -59,28 +69,81 @@ pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
 )]
 #[tracing::instrument(skip_all, fields(username = new_user.user_info.username))]
 pub async fn register_new_user(
-    mut auth_session: AuthSession,
     State(app): State<AppState>,
     Json(new_user): Json<NewUser>,
-) -> Result<Json<Value>, UserError> {
-    new_user.validate()?;
+) -> Result<(StatusCode, Json<Value>), UserError> {
+    new_user.validate().map_err(UserError::Validation)?;
 
-    let pool = app.pool;
-    let user_exists = sqlx::query!(
-        "select from users where username = $1",
-        new_user.user_info.username
-    )
-    .fetch_optional(&pool)
-    .await?;
+    let mut tx = app
+        .pool
+        .begin()
+        .await
+        .context("failed to acquire postgres connection from pool")?;
 
-    if user_exists.is_some() {
+    let exists = check_user_exists(&mut tx, &new_user.user_info.username)
+        .await
+        .context("problem checking if user exists")?;
+
+    if exists {
         return Err(UserError::UsernameTaken);
+    }
+
+    let user_id = new_user.user_info.user_id;
+
+    let password_hash = task::spawn_blocking(|| generate_hash(new_user.password))
+        .await
+        .context("error generating password hash in non-blocking thread")?;
+
+    create_user(&mut tx, new_user.user_info.clone(), password_hash)
+        .await
+        .context("failed to insert new user in the database")?;
+
+    let token = generate_subscription_token();
+    store_token(&mut tx, user_id, &token)
+        .await
+        .context("failed to store confirmation token for new user")?;
+
+    let name = match new_user.user_info.last_name {
+        Some(last_name) => format!("{} {}", new_user.user_info.first_name, last_name),
+        None => new_user.user_info.first_name,
     };
+    app.email_client
+        .send_confirmation_email(name, new_user.user_info.username, token)
+        .await
+        .context("error sending confirmation email")?;
 
-    let password_hash = task::spawn_blocking(|| generate_hash(new_user.password)).await?;
+    tx.commit()
+        .await
+        .context("failed to commit sql transaction to insert new user")?;
 
-    let user = new_user.user_info;
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({"message":"user successfully created"})),
+    ))
+}
 
+async fn store_token(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: Uuid,
+    token: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+    INSERT INTO verification_tokens (verification_token, user_id)
+    VALUES ($1, $2)
+        "#,
+        token,
+        user_id,
+    )
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+async fn create_user(
+    tx: &mut Transaction<'_, Postgres>,
+    user: User,
+    password_hash: String,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
         insert into users 
@@ -99,12 +162,28 @@ pub async fn register_new_user(
         user.last_updated,
         user.permission_level as PermissionLevel
     )
-    .execute(&pool)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn check_user_exists(
+    tx: &mut Transaction<'_, Postgres>,
+    username: &str,
+) -> Result<bool, sqlx::Error> {
+    let user_exists = sqlx::query_scalar!(
+        "select exists(
+            select 1 from users where username = $1
+        )",
+        username
+    )
+    .fetch_one(&mut **tx)
     .await?;
 
-    let auth_user = AuthenticatedUser::new(user.user_id, user.username, password_hash);
+    let Some(exists) = user_exists else {
+        return Err(sqlx::Error::RowNotFound);
+    };
 
-    auth_session.login(&auth_user).await?;
-
-    Ok(Json(json!({"message":"user successfully created"})))
+    Ok(exists)
 }

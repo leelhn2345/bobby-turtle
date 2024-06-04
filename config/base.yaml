@@ -7,3 +7,6 @@ database:
   username: postgres
   password: password
   database_name: telebot
+email:
+  api: https://api.brevo.com/v3/smtp/email
+  timeout_milliseconds: 10000

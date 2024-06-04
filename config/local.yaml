@@ -3,3 +3,5 @@ application:
   request_origin: http://localhost:3000
 database:
   require_ssl: false
+email:
+  base_url: "localhost:3000"

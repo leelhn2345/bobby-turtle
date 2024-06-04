@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use axum::{extract::State, Json};
 use chrono::Utc;
 use password_auth::generate_hash;
@@ -46,16 +46,22 @@ pub async fn change_password(
     let username = user.username;
     let login_creds = LoginCredentials::new(&username, &new_password.old_password);
 
-    let user_exists = auth_session.authenticate(login_creds).await?;
+    let user_exists = auth_session
+        .authenticate(login_creds)
+        .await
+        .context("cannot authenticate user")?;
 
     if user_exists.is_none() {
         return Err(UserError::InvalidCredentials);
     }
 
-    new_password.validate()?;
+    new_password.validate().map_err(UserError::Validation)?;
 
     let pool = app.pool;
-    let password_hash = task::spawn_blocking(|| generate_hash(new_password.new_password)).await?;
+    let password_hash = task::spawn_blocking(|| generate_hash(new_password.new_password))
+        .await
+        .context("problem generating password hash")?;
+
     let now = Utc::now();
     sqlx::query!(
         "update users 
@@ -69,7 +75,8 @@ pub async fn change_password(
         username
     )
     .execute(&pool)
-    .await?;
+    .await
+    .context("error inserting new password into database")?;
 
     Ok(Json(json!({"message":"password successfully changed"})))
 }

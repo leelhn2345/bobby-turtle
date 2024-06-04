@@ -1,4 +1,5 @@
 mod auth;
+mod email_client;
 mod routes;
 
 use axum_login::tower_sessions::ExpiredDeletion;
@@ -24,12 +25,6 @@ pub async fn start_app(settings: Settings, pool: PgPool, bot: Bot) {
 
     let session_store = PostgresStore::new(pool.clone());
 
-    // past user session id wouldn't work anymore hence dropping it
-    sqlx::query!(r#"drop schema if exists tower_sessions cascade"#)
-        .execute(&pool)
-        .await
-        .unwrap();
-
     session_store
         .migrate()
         .await
@@ -46,7 +41,7 @@ pub async fn start_app(settings: Settings, pool: PgPool, bot: Bot) {
             .continuously_delete_expired(tokio::time::Duration::from_secs(1800)),
     );
 
-    let app_router = app_router(&settings.application, session_store, pool, bot);
+    let app_router = app_router(settings, session_store, pool, bot);
 
     axum::serve(listener, app_router.into_make_service())
         .await

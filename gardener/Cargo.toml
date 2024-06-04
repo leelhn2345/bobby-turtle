@@ -34,6 +34,9 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 turtle-bot = { version = "0.1.0", path = "../turtle-bot" }
 uuid.workspace = true
+reqwest.workspace = true
+secrecy = "0.8.0"
+rand.workspace = true
 
 [lints]
 workspace = true
