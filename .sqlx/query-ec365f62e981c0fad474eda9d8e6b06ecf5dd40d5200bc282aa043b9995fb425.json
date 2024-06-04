@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select expires from reset_password_tokens where reset_token = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expires",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ec365f62e981c0fad474eda9d8e6b06ecf5dd40d5200bc282aa043b9995fb425"
+}

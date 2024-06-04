@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from reset_password_tokens where reset_token = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9cee65b952a7a1cd7fd07fc7cbe5c88d7bdc05b97df56922ac4625567c148068"
+}
