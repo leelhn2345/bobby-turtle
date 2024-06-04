@@ -18,7 +18,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
-use self::password_reset::{password_reset, password_reset_confirm};
+use self::password_reset::{check_reset_token_validity, password_reset, password_reset_confirm};
 
 use super::AppState;
 
@@ -87,8 +87,11 @@ pub enum UserError {
     #[error("unverified user")]
     Unverified,
 
-    #[error("unknown verification token")]
+    #[error("unknown token")]
     UnknownToken,
+
+    #[error("expired token")]
+    ExpiredToken,
 
     #[error("new password is same as old password")]
     SamePassword,
@@ -108,12 +111,13 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
-            Self::UserNotFound => (StatusCode::NOT_FOUND, "user is not found".to_owned()),
+            Self::UserNotFound => (StatusCode::NOT_FOUND, "request not found".to_owned()),
             Self::Unverified => (
                 StatusCode::UNAUTHORIZED,
                 "please check email for verification link".to_owned(),
             ),
             Self::UnknownToken => (StatusCode::UNAUTHORIZED, "unknown token".to_owned()),
+            Self::ExpiredToken => (StatusCode::GONE, "expired token".to_owned()),
 
             Self::UsernameTaken => (StatusCode::CONFLICT, "username is taken".to_owned()),
 
@@ -263,7 +267,10 @@ pub fn user_router() -> Router<AppState> {
         .route("/password/change", put(password_change::change_password))
         .route("/user-info", get(user_info))
         .route_layer(login_required!(Backend))
-        .route("/password/reset", post(password_reset))
+        .route(
+            "/password/reset",
+            post(password_reset).get(check_reset_token_validity),
+        )
         .route("/password/reset-confirm", put(password_reset_confirm))
         .route("/logout", post(logout))
         .route("/sign-up", post(sign_up::register_new_user))

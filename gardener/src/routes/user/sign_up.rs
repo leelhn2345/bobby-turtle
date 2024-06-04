@@ -4,7 +4,7 @@ use password_auth::generate_hash;
 use passwords::analyzer;
 use rand::{
     distributions::{Alphanumeric, DistString},
-    thread_rng, Rng,
+    thread_rng,
 };
 use reqwest::StatusCode;
 use serde::Deserialize;

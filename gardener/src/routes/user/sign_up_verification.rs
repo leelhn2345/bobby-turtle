@@ -1,5 +1,5 @@
 use anyhow::Context;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Query, State};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;

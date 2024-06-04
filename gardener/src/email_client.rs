@@ -47,7 +47,10 @@ impl EmailClient {
         email: String,
         token: String,
     ) -> Result<(), reqwest::Error> {
-        let confirmation_link = format!("{}/account_verification?token={}", self.base_url, token);
+        let confirmation_link = format!(
+            "{}/auth/account-verification?token={}",
+            self.base_url, token
+        );
 
         let html_content = format!(
             "<html>
@@ -72,7 +75,6 @@ impl EmailClient {
               }
            ],
            "subject":"Account Verification",
-           // "htmlContent":"zzz"
            "htmlContent":html_content
         });
         self.http_client
@@ -86,9 +88,47 @@ impl EmailClient {
     }
 
     pub async fn send_password_reset_email(
-        name: String,
+        &self,
         email: String,
+        reset_token: String,
     ) -> Result<(), reqwest::Error> {
+        tracing::debug!("send password reset email");
+        let reset_link = format!(
+            "{}/auth/password-reset?reset={}",
+            self.base_url, reset_token
+        );
+        let html_content = format!(
+            "<html>
+            <head></head>
+            <body>
+            <p>Hello,
+            </p>Please click <a href=\"{reset_link}\">here</a> to reset your password.</p>
+            <p>If you did not request for a password reset, feel free to ignore this email.</p>
+            <p>Warm Regards,</p>
+            <p>Digital Garden</p>
+            </body></html>"
+        );
+
+        let email_content = json!({
+           "sender":{
+              "name":"Digital Garden",
+              "email":"noreply@alaladin.com"
+           },
+           "to":[
+              {
+                 "email":email,
+              }
+           ],
+           "subject":"Password Reset",
+           "htmlContent":html_content
+        });
+
+        self.http_client
+            .post(self.api.clone())
+            .json(&email_content)
+            .send()
+            .await?
+            .error_for_status()?;
         Ok(())
     }
 }
