@@ -18,9 +18,12 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
+use self::password_reset::{password_reset, password_reset_confirm};
+
 use super::AppState;
 
-pub mod change_password;
+pub mod password_change;
+pub mod password_reset;
 pub mod sign_up;
 pub mod sign_up_verification;
 
@@ -92,6 +95,9 @@ pub enum UserError {
 
     #[error(transparent)]
     UnknownError(#[from] anyhow::Error),
+
+    #[error("no user found")]
+    UserNotFound,
 }
 
 impl IntoResponse for UserError {
@@ -102,12 +108,15 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
+            Self::UserNotFound => (StatusCode::NOT_FOUND, "user is not found".to_owned()),
             Self::Unverified => (
                 StatusCode::UNAUTHORIZED,
                 "please check email for verification link".to_owned(),
             ),
             Self::UnknownToken => (StatusCode::UNAUTHORIZED, "unknown token".to_owned()),
+
             Self::UsernameTaken => (StatusCode::CONFLICT, "username is taken".to_owned()),
+
             Self::Validation(e) => {
                 tracing::error!("{e:#?}");
                 let fields: Vec<&str> = e.field_errors().into_keys().collect();
@@ -251,13 +260,15 @@ pub async fn user_info(
 
 pub fn user_router() -> Router<AppState> {
     Router::new()
-        .route("/change-password", put(change_password::change_password))
+        .route("/password/change", put(password_change::change_password))
         .route("/user-info", get(user_info))
         .route_layer(login_required!(Backend))
+        .route("/password/reset", post(password_reset))
+        .route("/password/reset-confirm", put(password_reset_confirm))
         .route("/logout", post(logout))
         .route("/sign-up", post(sign_up::register_new_user))
         .route(
-            "/sign-up-verification/:token",
+            "/sign-up-verification",
             put(sign_up_verification::sign_up_verification),
         )
         .route("/login", post(login))

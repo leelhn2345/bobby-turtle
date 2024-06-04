@@ -1,19 +1,26 @@
 use anyhow::Context;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use reqwest::StatusCode;
+use serde::Deserialize;
 use sqlx::PgPool;
+use utoipa::IntoParams;
 use uuid::Uuid;
 
 use crate::routes::AppState;
 
 use super::UserError;
 
+#[derive(Deserialize, IntoParams)]
+pub struct SignUpVerificationQuery {
+    token: String,
+}
+
 #[utoipa::path(
     put,
     tag="user",
-    path="/user/sign-up-verification/{token}",
+    path="/user/sign-up-verification",
     params(
-        ("token", description = "verification token")
+        SignUpVerificationQuery
     ),
     responses(
         (status = StatusCode::ACCEPTED, description = "user successfully registered"),
@@ -26,11 +33,11 @@ use super::UserError;
 /// changes user's `verified` status to true
 pub async fn sign_up_verification(
     State(app): State<AppState>,
-    Path(token): Path<String>,
+    Query(query): Query<SignUpVerificationQuery>,
 ) -> Result<StatusCode, UserError> {
     let pool = app.pool;
 
-    let user_id = get_user_id_from_token(&pool, token)
+    let user_id = get_user_id_from_token(&pool, query.token)
         .await
         .context("failed to retrieve user_id associated with provided token")?
         .ok_or(UserError::UnknownToken)?;

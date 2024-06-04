@@ -2,7 +2,10 @@ use anyhow::Context;
 use axum::{extract::State, Json};
 use password_auth::generate_hash;
 use passwords::analyzer;
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{
+    distributions::{Alphanumeric, DistString},
+    thread_rng, Rng,
+};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -39,10 +42,7 @@ pub fn analyze_password(password: &str) -> Result<(), ValidationError> {
 
 fn generate_subscription_token() -> String {
     let mut rng = thread_rng();
-    std::iter::repeat_with(|| rng.sample(Alphanumeric))
-        .map(char::from)
-        .take(25)
-        .collect()
+    Alphanumeric.sample_string(&mut rng, 25)
 }
 
 #[derive(Deserialize, Validate, ToSchema)]
