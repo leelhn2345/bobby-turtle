@@ -64,15 +64,6 @@ pub struct LoginCredentials {
     pub password: String,
 }
 
-impl LoginCredentials {
-    pub fn new(username: impl Into<String>, password: impl Into<String>) -> Self {
-        Self {
-            username: username.into(),
-            password: password.into(),
-        }
-    }
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum UserError {
     #[error("username is taken")]
