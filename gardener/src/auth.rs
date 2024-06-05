@@ -48,7 +48,7 @@ impl PermissionLevel {
 pub struct AuthenticatedUser {
     pub user_id: Uuid,
     pub username: String,
-    password_hash: String,
+    pub password_hash: String,
     pub permission_level: PermissionLevel,
     pub verified: bool,
 }

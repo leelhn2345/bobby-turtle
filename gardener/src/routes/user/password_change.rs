@@ -1,7 +1,7 @@
 use anyhow::Context;
 use axum::{extract::State, Json};
 use chrono::Utc;
-use password_auth::generate_hash;
+use password_auth::{generate_hash, verify_password};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tokio::task;
@@ -40,6 +40,10 @@ pub async fn change_password(
     new_password.validate().map_err(UserError::Validation)?;
 
     let user = auth_session.user.ok_or(UserError::NotFound)?;
+
+    task::spawn_blocking(move || verify_password(new_password.old_password, &user.password_hash))
+        .await
+        .context("non-blocking thread error")??;
 
     let pool = app.pool;
     let password_hash = task::spawn_blocking(|| generate_hash(new_password.new_password))

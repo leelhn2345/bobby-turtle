@@ -10,6 +10,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use axum_login::login_required;
 use chrono::{DateTime, Utc};
+use password_auth::VerifyError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -66,6 +67,9 @@ pub struct LoginCredentials {
 
 #[derive(thiserror::Error, Debug)]
 pub enum UserError {
+    #[error("wrong password")]
+    WrongPassword(#[from] VerifyError),
+
     #[error("username is taken")]
     UsernameTaken,
 
@@ -102,6 +106,7 @@ impl IntoResponse for UserError {
         }
 
         let (status_code, msg) = match self {
+            Self::WrongPassword(_) => (StatusCode::UNAUTHORIZED, "invalid password".to_owned()),
             Self::NotFound => (StatusCode::NOT_FOUND, "resource(s) not found".to_owned()),
             Self::Unverified => (
                 StatusCode::UNAUTHORIZED,
