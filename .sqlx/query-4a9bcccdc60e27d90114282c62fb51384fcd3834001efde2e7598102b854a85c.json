@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select exists \n                        (select telegram_user_id from telegram_users \n                         where telegram_user_id = $1)\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "4a9bcccdc60e27d90114282c62fb51384fcd3834001efde2e7598102b854a85c"
+}

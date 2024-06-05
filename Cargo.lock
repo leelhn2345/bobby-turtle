@@ -3570,6 +3570,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "gaia",
+ "rand",
  "serde",
  "sqlx",
  "teloxide",

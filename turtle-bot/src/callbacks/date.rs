@@ -257,7 +257,7 @@ async fn send_prev_or_next_month(
     let naive_day = d.day0() + 1;
     let naive_month = d.month0() + 1;
     let ce_year_of_naive_month = d.year_ce();
-    let naive_year = i32::from_ne_bytes(ce_year_of_naive_month.1.to_ne_bytes());
+    let naive_year = i32::from_le_bytes(ce_year_of_naive_month.1.to_le_bytes());
     if !ce_year_of_naive_month.0 {
         tracing::error!("year of wrong era - {}", naive_year);
         return Err(DateError::WrongEra.into());

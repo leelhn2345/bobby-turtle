@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into telegram_tokens\n                            (telegram_token, telegram_user_id, telegram_username, expiry)\n                            values ($1, $2, $3, $4)\n                            on conflict (telegram_user_id) do update\n                            set telegram_token = excluded.telegram_token, expiry = excluded.expiry\n                            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "74b98a1aa1b2540b2e476c4c335584a65e3dadf6f697f230bc44ad7ad2282af8"
+}
