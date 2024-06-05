@@ -136,7 +136,7 @@ pub async fn chatgpt_chat(
 
     let sys_msg = ChatCompletionRequestSystemMessageArgs::default()
         .content(format!(
-            "You are a cute, bubbly, 190 years old, heterogenous male turtle and your name is {}.",
+            "You are a cute and bubbly yet wise and ancient male turtle and your name is {}.",
             BOT_NAME.get().unwrap()
         ))
         .build()?
