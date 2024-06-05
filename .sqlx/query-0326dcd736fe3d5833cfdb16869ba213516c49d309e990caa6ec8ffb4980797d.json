@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into telegram_whisperers\n                            (telegram_user_id, telegram_chat_id, registered)\n                            values ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0326dcd736fe3d5833cfdb16869ba213516c49d309e990caa6ec8ffb4980797d"
+}
