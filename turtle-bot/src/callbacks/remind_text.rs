@@ -150,7 +150,7 @@ pub async fn remind_text_callback(
         JOB_TEXT_CONFIRM => {
             let time_delta = date_time - now;
             let time_delta_secs = time_delta.num_seconds();
-            let seconds = u64::from_ne_bytes(time_delta_secs.to_ne_bytes());
+            let seconds = u64::from_le_bytes(time_delta_secs.to_le_bytes());
 
             let bot_clone = bot.clone();
             let text_clone = msg_text.clone();

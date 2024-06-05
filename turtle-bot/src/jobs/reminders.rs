@@ -42,7 +42,7 @@ pub async fn get_reminders(bot: &Bot, pool: &PgPool) -> Result<Vec<Job>, CronJob
 
     for remind in reminders {
         let time_delta_secs = (remind.due - now).num_seconds();
-        let seconds = u64::from_ne_bytes(time_delta_secs.to_ne_bytes());
+        let seconds = u64::from_le_bytes(time_delta_secs.to_le_bytes());
 
         let remindx = remind.clone();
         let botx = bot.clone();
