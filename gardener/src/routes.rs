@@ -35,7 +35,12 @@ use crate::{
     email_client::EmailClient,
 };
 
-use self::{telegram::tele_router, test::test_router, user::user_router};
+use self::{
+    resume::{projects::project_router, resume_router},
+    telegram::tele_router,
+    test::test_router,
+    user::user_router,
+};
 
 #[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
@@ -132,9 +137,10 @@ pub fn app_router(
 
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs.json", ApiDoc::openapi()))
-        .route("/resume", get(resume::resume_details))
+        .nest("/resume", resume_router())
         .nest("/test", test_router())
         .nest("/user", user_router())
+        .nest("/projects", project_router())
         .nest("/telegram", tele_router())
         .with_state(app_state)
         .layer(layers)

@@ -1,10 +1,14 @@
+pub mod projects;
+
 use std::time::Instant;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
 use indexmap::IndexMap;
 use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
+
+use self::projects::project_router;
 
 use super::AppState;
 
@@ -66,8 +70,8 @@ pub struct JobDescription {
 #[serde(rename_all = "camelCase")]
 pub struct Projects {
     id: i32,
-    project_name: String,
-    project_url: String,
+    name: String,
+    url: String,
     description: Option<Vec<String>>,
 }
 
@@ -76,7 +80,7 @@ pub struct Projects {
 /// gets data about resume
 #[utoipa::path(
     get,
-    tag="about",
+    tag="resume",
     path="/resume",
     responses(
         (status = 200, body=ResumeDetails, description = "resume data")
@@ -154,7 +158,7 @@ async fn get_projects(pool: &PgPool) -> Result<Vec<Projects>, AboutPageError> {
     let projects = sqlx::query_as!(
         Projects,
         "select
-        id, project_name,project_url,description
+        id, name, url, description
         from projects
         order by id desc
         "
@@ -182,4 +186,10 @@ async fn get_skills(pool: &PgPool) -> Result<Skills, AboutPageError> {
     .await?;
 
     Ok(skills)
+}
+
+pub fn resume_router() -> Router<AppState> {
+    Router::new()
+        .route("/", get(resume_details))
+        .nest("/projects", project_router())
 }
