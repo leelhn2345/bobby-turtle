@@ -66,8 +66,8 @@ pub struct JobDescription {
 #[serde(rename_all = "camelCase")]
 pub struct Projects {
     id: i32,
-    project_name: String,
-    project_url: String,
+    name: String,
+    url: String,
     description: Option<Vec<String>>,
 }
 
@@ -154,7 +154,7 @@ async fn get_projects(pool: &PgPool) -> Result<Vec<Projects>, AboutPageError> {
     let projects = sqlx::query_as!(
         Projects,
         "select
-        id, project_name,project_url,description
+        id,name,url,description
         from projects
         order by id desc
         "
