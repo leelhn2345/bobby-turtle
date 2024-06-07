@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            delete from telegram_tokens where telegram_token = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "71a7b1cc93d3d278a8f2c2a5a7d7711dd05a804e55539d8d69c16349dc1c1086"
+}

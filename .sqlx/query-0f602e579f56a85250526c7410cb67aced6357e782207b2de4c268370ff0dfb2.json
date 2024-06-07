@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select \n            user_id, \n            username, \n            password_hash,\n            permission_level as \"permission_level:PermissionLevel\",\n            verified\n            from users where user_id = $1\n            ",
+  "query": "\n            select \n            a.user_id, \n            a.username, \n            a.password_hash, \n            a.permission_level as \"permission_level: PermissionLevel\",\n            a.verified,\n            coalesce (b.telegram_user_id is not null, false) as \"telegram_verified!: bool\"\n            from users as a\n                left join telegram_users as b \n                on a.user_id = b.user_id\n            where \n                a.user_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "permission_level:PermissionLevel",
+        "name": "permission_level: PermissionLevel",
         "type_info": {
           "Custom": {
             "name": "permissions",
@@ -38,6 +38,11 @@
         "ordinal": 4,
         "name": "verified",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "telegram_verified!: bool",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -50,8 +55,9 @@
       false,
       false,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "ebba6e8e2741df21f30eb6c74a89c62b0d1df365c374351ac6553d3cc28126da"
+  "hash": "0f602e579f56a85250526c7410cb67aced6357e782207b2de4c268370ff0dfb2"
 }

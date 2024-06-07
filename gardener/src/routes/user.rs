@@ -154,7 +154,7 @@ impl IntoResponse for UserError {
     tag="user",
     path="/user/login",
     responses(
-        (status = StatusCode::OK, body=User, description = "user successfully logged in"),
+        (status = StatusCode::OK, description = "user successfully logged in"),
         (status = StatusCode::UNPROCESSABLE_ENTITY, description = "validation error"),
         (status = StatusCode::INTERNAL_SERVER_ERROR, description = "internal server error")
     )

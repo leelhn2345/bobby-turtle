@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        select \n        id, \n        name, \n        url, \n        summary,\n        publicity as \"publicity: Publicity\"\n        from project_demos\n        order by id desc\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "publicity: Publicity",
+        "type_info": {
+          "Custom": {
+            "name": "publicity",
+            "kind": {
+              "Enum": [
+                "public",
+                "member"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "28879177f94fb37e350ca1174959ba05425bc121d5000cbd96536d03fa3bd3ec"
+}

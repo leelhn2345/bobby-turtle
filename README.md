@@ -49,8 +49,7 @@ and [`local.yaml`](./config/local.yaml).
 
 - Reverse Proxy
   - Needed for webhook
-  - I chose [ngrok](https://ngrok.com/) because there's no need to
-  setup TLS for HTTPS.
+  - I chose [ngrok](https://ngrok.com/) because there's no need to setup SSL/TLS.
   - Feel free to use any other reverse proxy.
 - Postgres Db
 - sqlx-cli
