@@ -6,7 +6,7 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use axum_login::login_required;
+use axum_login::{login_required, predicate_required};
 use chrono::Utc;
 use serde::Serialize;
 use teloxide::{requests::Requester, types::ChatId};
@@ -183,9 +183,21 @@ pub async fn verify_telegram_user(
     Ok(StatusCode::ACCEPTED)
 }
 
-pub fn bot_router() -> Router<AppState> {
+/// only allow apis for verified users
+#[allow(clippy::unused_async)]
+async fn is_telegram_user(auth_session: AuthSession) -> bool {
+    let user = auth_session.user;
+    let Some(user) = user else { return false };
+    user.telegram_verified
+}
+
+pub fn tele_router() -> Router<AppState> {
     Router::new()
         .route("/message/:chat_id", post(send_tele_msg))
+        .route_layer(predicate_required!(
+            is_telegram_user,
+            (StatusCode::UNAUTHORIZED, "not verified").to_owned()
+        ))
         .route(
             "/verify-user/:token",
             post(verify_telegram_user).layer(login_required!(Backend)),

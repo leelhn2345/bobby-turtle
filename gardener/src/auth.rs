@@ -51,6 +51,7 @@ pub struct AuthenticatedUser {
     pub password_hash: String,
     pub permission_level: PermissionLevel,
     pub verified: bool,
+    pub telegram_verified: bool,
 }
 
 impl AuthUser for AuthenticatedUser {
@@ -81,12 +82,17 @@ impl AuthnBackend for Backend {
             AuthenticatedUser,
             r#"
             select 
-            user_id, 
-            username, 
-            password_hash, 
-            permission_level as "permission_level: PermissionLevel",
-            verified
-            from users where username = $1
+            a.user_id, 
+            a.username, 
+            a.password_hash, 
+            a.permission_level as "permission_level: PermissionLevel",
+            a.verified,
+            coalesce (b.telegram_user_id is not null, false) as "telegram_verified!: bool"
+            from users as a
+                left join telegram_users as b 
+                on a.user_id = b.user_id
+            where 
+                a.username = $1
             "#,
             creds.username
         )
@@ -107,12 +113,17 @@ impl AuthnBackend for Backend {
             AuthenticatedUser,
             r#"
             select 
-            user_id, 
-            username, 
-            password_hash,
-            permission_level as "permission_level:PermissionLevel",
-            verified
-            from users where user_id = $1
+            a.user_id, 
+            a.username, 
+            a.password_hash, 
+            a.permission_level as "permission_level: PermissionLevel",
+            a.verified,
+            coalesce (b.telegram_user_id is not null, false) as "telegram_verified!: bool"
+            from users as a
+                left join telegram_users as b 
+                on a.user_id = b.user_id
+            where 
+                a.user_id = $1
             "#,
             user_id
         )

@@ -35,7 +35,7 @@ use crate::{
     email_client::EmailClient,
 };
 
-use self::{telegram::bot_router, test::test_router, user::user_router};
+use self::{telegram::tele_router, test::test_router, user::user_router};
 
 #[utoipauto(paths = "./gardener/src")]
 #[derive(OpenApi)]
@@ -135,7 +135,7 @@ pub fn app_router(
         .route("/resume", get(resume::resume_details))
         .nest("/test", test_router())
         .nest("/user", user_router())
-        .nest("/telegram", bot_router())
+        .nest("/telegram", tele_router())
         .with_state(app_state)
         .layer(layers)
         .route("/", get(health_check::root))
