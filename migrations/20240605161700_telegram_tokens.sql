@@ -8,7 +8,8 @@ create table if not exists telegram_tokens (
 create table telegram_users (
   telegram_user_id bigint primary key,
   telegram_username text,
-  user_id uuid not null references users (user_id) on delete cascade
+  user_id uuid not null references users (user_id) on delete cascade,
+  joined_at timestamptz not null
 );
 
 create table if not exists telegram_whisperers (

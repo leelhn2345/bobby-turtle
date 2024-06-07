@@ -3,7 +3,8 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["turtle-bot", "gardener"]
+members = ["gaia", "turtle-bot", "gardener"]
+default-members = ["gardener"]
 resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
