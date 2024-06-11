@@ -89,9 +89,16 @@ impl Command {
                             Utc::now()
                         )
                         .execute(&pool)
-                        .await?;
-                        let name = &user.first_name;
-                        let text = format!("I am now a whisperer for @{name}");
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("{e:#?}");
+                            e
+                        })?;
+                        let name = match username {
+                            Some(x) => format!("@{x}"),
+                            None => user.first_name.to_string(),
+                        };
+                        let text = format!("I am now a whisperer for {name}");
                         bot.send_message(chat_id, text).await?;
                     } else {
                         send_sticker(&bot, &chat_id, stickers.lame).await?;
