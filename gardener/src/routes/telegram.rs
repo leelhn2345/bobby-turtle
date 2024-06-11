@@ -9,7 +9,11 @@ use axum::{
 use axum_login::{login_required, predicate_required};
 use chrono::Utc;
 use serde::Serialize;
-use teloxide::{requests::Requester, types::ChatId};
+use teloxide::{
+    payloads::SendMessageSetters,
+    requests::Requester,
+    types::{ChatId, ParseMode},
+};
 use turtle_bot::chatroom::{check_if_exists_and_inside, ChatRoomError};
 use utoipa::ToSchema;
 
@@ -79,6 +83,7 @@ impl IntoResponse for TelegramError {
         (status = StatusCode::NOT_FOUND, description = "room does not exist or bot is not in chat")
     )
 )]
+#[allow(deprecated)]
 pub async fn send_tele_msg(
     State(app): State<AppState>,
     Path(chat_id): Path<i64>,
@@ -93,6 +98,7 @@ pub async fn send_tele_msg(
     tx.commit().await.context("can't commit transaction")?;
     app.bot
         .send_message(ChatId(chat_id), msg)
+        .parse_mode(ParseMode::Markdown)
         .await
         .context("failed sending message to telegram server")?;
     Ok(())
