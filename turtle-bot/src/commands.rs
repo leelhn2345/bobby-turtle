@@ -89,7 +89,11 @@ impl Command {
                             Utc::now()
                         )
                         .execute(&pool)
-                        .await?;
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("{e:#?}");
+                            e
+                        })?;
                         let name = match username {
                             Some(x) => format!("@{x}"),
                             None => user.first_name.to_string(),

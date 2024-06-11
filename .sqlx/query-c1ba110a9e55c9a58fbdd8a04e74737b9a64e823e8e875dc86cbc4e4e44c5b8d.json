@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n        c.telegram_chat_id,\n        d.title\n        from\n        users as a\n        inner join telegram_users as b on b.user_id = a.user_id\n        inner join telegram_whisperers as c on b.telegram_user_id = c.telegram_user_id\n        inner join chatrooms as d on c.telegram_chat_id = d.id and d.is_group is true\n        where\n        a.user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "telegram_chat_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "c1ba110a9e55c9a58fbdd8a04e74737b9a64e823e8e875dc86cbc4e4e44c5b8d"
+}

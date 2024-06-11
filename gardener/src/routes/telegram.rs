@@ -214,6 +214,7 @@ async fn check_if_verified(auth_session: AuthSession) -> Json<Option<bool>> {
 }
 
 #[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatroomInfo {
     telegram_chat_id: i64,
     title: Option<String>,
