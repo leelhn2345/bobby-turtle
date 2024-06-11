@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::post,
+    routing::{get, post},
     Json, Router,
 };
 use axum_login::{login_required, predicate_required};
@@ -11,6 +11,7 @@ use chrono::Utc;
 use serde::Serialize;
 use teloxide::{requests::Requester, types::ChatId};
 use turtle_bot::chatroom::{check_if_exists_and_inside, ChatRoomError};
+use utoipa::ToSchema;
 
 use crate::auth::{AuthSession, Backend};
 
@@ -118,7 +119,6 @@ pub async fn verify_telegram_user(
     State(app): State<AppState>,
     Path(token): Path<String>,
 ) -> Result<StatusCode, TelegramError> {
-    println!("hello");
     let mut tx = app
         .pool
         .begin()
@@ -191,15 +191,89 @@ async fn is_telegram_user(auth_session: AuthSession) -> bool {
     user.telegram_verified
 }
 
+#[utoipa::path(
+    get,
+    path = "/telegram/check-user",
+    tag="telegram",
+    responses(
+        (status=200, body=Option<bool>)
+    )
+)]
+/// check for user's telegram status
+///
+/// 1. `true` - user is verified
+/// 2. `false` - user is not registered
+/// 3. none - user is not logged in
+async fn check_if_verified(auth_session: AuthSession) -> Json<Option<bool>> {
+    let user = auth_session.user;
+    let res = match user {
+        None => None,
+        Some(user) => Some(user.telegram_verified),
+    };
+    Json(res)
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ChatroomInfo {
+    telegram_chat_id: i64,
+    title: Option<String>,
+}
+
+#[utoipa::path(
+    get,
+    path="/telegram/chats-available",
+    tag="telegram",
+    responses(
+        (status = 200, body = Vec<ChatroomInfo>, description = "list of available chats user can whisper to"),
+        (status = 505, description = "internal server error")
+    )
+)]
+#[tracing::instrument(skip_all)]
+async fn chats_available(
+    State(app): State<AppState>,
+    auth_session: AuthSession,
+) -> Result<Json<Vec<ChatroomInfo>>, TelegramError> {
+    let pool = app.pool;
+
+    let user_id = auth_session.user.context("no user in session")?.user_id;
+
+    let chats = sqlx::query_as!(
+        ChatroomInfo,
+        r#"select
+        c.telegram_chat_id,
+        d.title
+        from
+        users as a
+        inner join telegram_users as b on b.user_id = a.user_id
+        inner join telegram_whisperers as c on b.telegram_user_id = c.telegram_user_id
+        inner join chatrooms as d on c.telegram_chat_id = d.id and d.is_group is true
+        where
+        a.user_id = $1
+        "#,
+        user_id
+    )
+    .fetch_all(&pool)
+    .await
+    .context("can't retrieve chat info")?;
+
+    Ok(Json(chats))
+}
+
 pub fn tele_router() -> Router<AppState> {
-    Router::new()
+    let verified_user_routes = Router::new()
         .route("/message/:chat_id", post(send_tele_msg))
         .route_layer(predicate_required!(
             is_telegram_user,
             (StatusCode::UNAUTHORIZED, "not verified").to_owned()
-        ))
-        .route(
-            "/verify-user/:token",
-            post(verify_telegram_user).layer(login_required!(Backend)),
-        )
+        ));
+
+    let need_log_in_routes = Router::new()
+        .route("/verify-user/:token", post(verify_telegram_user))
+        .route("/chats-available", get(chats_available))
+        .route_layer(login_required!(Backend));
+
+    Router::new()
+        .route("/check-user", get(check_if_verified))
+        .merge(verified_user_routes)
+        .merge(need_log_in_routes)
 }
