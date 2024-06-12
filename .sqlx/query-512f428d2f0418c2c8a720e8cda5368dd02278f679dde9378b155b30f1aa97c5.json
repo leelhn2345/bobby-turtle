@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select exists (\n        select * from telegram_whisperers as a\n        inner join telegram_users as b on b.user_id = $1\n        where a.telegram_chat_id = $2\n        )",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "512f428d2f0418c2c8a720e8cda5368dd02278f679dde9378b155b30f1aa97c5"
+}

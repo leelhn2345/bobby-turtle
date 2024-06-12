@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from telegram_whisperers where telegram_chat_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d3e32ccdb63dc52de86a8f5baf1f3c06bd266281c39e1a3b09a4cff6e345cea6"
+}

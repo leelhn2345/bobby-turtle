@@ -72,6 +72,7 @@ pub fn bot_handler() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDes
                         .filter_command::<commands::Command>()
                         .endpoint(commands::Command::answer),
                 )
+                .branch(Message::filter_group_chat_created().endpoint(member::handle_me_join))
                 .branch(
                     Message::filter_new_chat_members()
                         .branch(dptree::filter(i_got_added).endpoint(member::handle_me_join))
