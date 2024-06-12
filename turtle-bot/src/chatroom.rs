@@ -109,7 +109,7 @@ pub async fn check_if_exists_and_inside(
 ) -> Result<(), ChatRoomError> {
     let inside = sqlx::query_scalar!(
         "
-        SELECT EXISTS(SELECT 1 FROM chatrooms where id = $1 and left_at is null)
+        SELECT EXISTS(SELECT * FROM chatrooms where id = $1 and left_at is null)
         ",
         chat_id
     )

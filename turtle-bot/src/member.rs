@@ -109,10 +109,27 @@ pub async fn handle_member_join(bot: Bot, msg: Message, stickers: Stickers) -> R
 }
 
 #[tracing::instrument(name = "member left", skip_all)]
-pub async fn handle_member_leave(bot: Bot, msg: Message, stickers: Stickers) -> Result<()> {
+pub async fn handle_member_leave(
+    pool: PgPool,
+    bot: Bot,
+    msg: Message,
+    stickers: Stickers,
+) -> Result<()> {
     let Some(member) = msg.left_chat_member() else {
         return Ok(());
     };
+    let chat_id = msg.chat.id.0;
+    let user_id = member.id.0;
+    let user_id_i64 = i64::from_le_bytes(user_id.to_le_bytes());
+
+    sqlx::query!(
+        "delete from telegram_whisperers
+        where telegram_chat_id = $1 and telegram_user_id = $2",
+        chat_id,
+        user_id_i64
+    )
+    .execute(&pool)
+    .await?;
     let text = format!("Sayanora {} ~~ 😭😭😭", member.full_name());
     send_sticker(&bot, &msg.chat.id, stickers.sad).await?;
     bot.send_message(msg.chat.id, text)

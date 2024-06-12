@@ -13,8 +13,8 @@ use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
     types::{ChatId, ParseMode},
+    ApiError, RequestError,
 };
-use turtle_bot::chatroom::{check_if_exists_and_inside, ChatRoomError};
 use utoipa::ToSchema;
 
 use crate::auth::{AuthSession, Backend};
@@ -24,10 +24,13 @@ use super::AppState;
 #[derive(thiserror::Error, Debug)]
 pub enum TelegramError {
     #[error(transparent)]
-    Chatroom(#[from] ChatRoomError),
+    TeloxideError(#[from] teloxide::RequestError),
 
     #[error("resource not found")]
     NotFound,
+
+    #[error("bot not in chat")]
+    BotNotInChat,
 
     #[error("user is unauthorized")]
     NotLoggedIn,
@@ -37,6 +40,9 @@ pub enum TelegramError {
 
     #[error("token has expired")]
     ExpiredToken,
+
+    #[error("User has left chatroom")]
+    UserNotInChat,
 }
 
 impl IntoResponse for TelegramError {
@@ -47,14 +53,16 @@ impl IntoResponse for TelegramError {
         }
 
         let (status_code, msg) = match self {
+            Self::BotNotInChat => (StatusCode::FORBIDDEN, "bot no longer in chat".to_owned()),
+            Self::UserNotInChat => (StatusCode::FORBIDDEN, "user is not in chat".to_owned()),
             Self::NotLoggedIn => (StatusCode::UNAUTHORIZED, "user is unauthorized".to_owned()),
             Self::NotFound => (StatusCode::NOT_FOUND, "resource(s) not found".to_owned()),
             Self::ExpiredToken => (StatusCode::GONE, "token has expired".to_owned()),
-            Self::Chatroom(e) => {
+            Self::TeloxideError(e) => {
                 tracing::error!("{e:#?}");
                 (
-                    StatusCode::NOT_FOUND,
-                    "room does not exist or bot is not in chat".to_owned(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_owned(),
                 )
             }
             Self::UnknownError(e) => {
@@ -85,22 +93,58 @@ impl IntoResponse for TelegramError {
 )]
 #[allow(deprecated)]
 pub async fn send_tele_msg(
+    auth_session: AuthSession,
     State(app): State<AppState>,
     Path(chat_id): Path<i64>,
     msg: String,
 ) -> Result<(), TelegramError> {
-    let mut tx = app
-        .pool
-        .begin()
-        .await
-        .context("can't get postgres connection")?;
-    check_if_exists_and_inside(&mut tx, chat_id).await?;
-    tx.commit().await.context("can't commit transaction")?;
-    app.bot
+    let pool = app.pool;
+    let user_id = auth_session
+        .user
+        .context("user is using protected api")?
+        .user_id;
+
+    let exists = sqlx::query_scalar!(
+        "select exists (
+        select * from telegram_whisperers as a
+        inner join telegram_users as b on b.user_id = $1
+        where a.telegram_chat_id = $2
+        )",
+        user_id,
+        chat_id
+    )
+    .fetch_one(&pool)
+    .await
+    .context("error checking if user and chatroom is in database")?
+    .context("query scalar returns None")?;
+
+    if !exists {
+        return Err(TelegramError::UserNotInChat);
+    }
+
+    let msg_result = app
+        .bot
         .send_message(ChatId(chat_id), msg)
         .parse_mode(ParseMode::Markdown)
         .await
-        .context("failed sending message to telegram server")?;
+        .map_err(|e| match e {
+            RequestError::Api(ApiError::BotKicked | ApiError::BotKickedFromSupergroup) => {
+                TelegramError::BotNotInChat
+            }
+            _ => e.into(),
+        });
+
+    if let Err(TelegramError::BotNotInChat) = msg_result {
+        sqlx::query!(
+            "delete from telegram_whisperers where telegram_chat_id = $1",
+            chat_id
+        )
+        .execute(&pool)
+        .await
+        .context("bot has been kicked. can't delete chat room from database")?;
+    }
+
+    msg_result?;
     Ok(())
 }
 
