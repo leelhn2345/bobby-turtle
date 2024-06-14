@@ -1,18 +1,20 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use axum::{
-    extract::{Path, State},
+    body::Bytes,
+    extract::{DefaultBodyLimit, Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use axum_login::{login_required, predicate_required};
+use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
 use chrono::Utc;
 use serde::Serialize;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
-    types::{ChatId, ParseMode},
+    types::{ChatId, InputFile, InputMedia, InputMediaPhoto, ParseMode},
     ApiError, RequestError,
 };
 use utoipa::ToSchema;
@@ -43,6 +45,9 @@ pub enum TelegramError {
 
     #[error("User has left chatroom")]
     UserNotInChat,
+
+    #[error("doc is not image type")]
+    NotImage,
 }
 
 impl IntoResponse for TelegramError {
@@ -54,6 +59,10 @@ impl IntoResponse for TelegramError {
 
         let (status_code, msg) = match self {
             Self::BotNotInChat => (StatusCode::FORBIDDEN, "bot no longer in chat".to_owned()),
+            Self::NotImage => (
+                StatusCode::NOT_ACCEPTABLE,
+                "non-image file detected".to_owned(),
+            ),
             Self::UserNotInChat => (StatusCode::FORBIDDEN, "user is not in chat".to_owned()),
             Self::NotLoggedIn => (StatusCode::UNAUTHORIZED, "user is unauthorized".to_owned()),
             Self::NotFound => (StatusCode::NOT_FOUND, "resource(s) not found".to_owned()),
@@ -310,9 +319,79 @@ async fn chats_available(
     Ok(Json(chats))
 }
 
+#[derive(ToSchema, TryFromMultipart)]
+pub struct MediaUpload {
+    caption: Option<String>,
+    #[schema(value_type = Vec<Vec<u8>>)]
+    #[form_data(limit = "unlimited")]
+    media: Vec<FieldData<Bytes>>,
+}
+#[utoipa::path(
+    post,
+    tag = "telegram",
+    path = "/telegram/media/{id}",
+    params(
+        ("id", description="id of chat")
+    ),
+    request_body(content_type = "multipart/form-data", content = MediaUpload),
+    responses(
+        (status = 200, description = "media uploaded")
+    )
+)]
+#[tracing::instrument(skip_all)]
+pub async fn send_tele_media(
+    State(app): State<AppState>,
+    Path(chat_id): Path<i64>,
+    TypedMultipart(data): TypedMultipart<MediaUpload>,
+) -> Result<(), TelegramError> {
+    let bot = app.bot;
+
+    let mut media_vec: Vec<InputMedia> = Vec::new();
+
+    let mut wow = data.media.into_iter();
+    let first_media = wow.next().context("no upload available")?;
+
+    if first_media
+        .metadata
+        .content_type
+        .unwrap_or_default()
+        .starts_with("image/")
+    {
+        media_vec.push(InputMedia::Photo(
+            InputMediaPhoto::new(InputFile::memory(first_media.contents))
+                .caption(data.caption.unwrap_or_default()),
+        ));
+    } else {
+        return Err(TelegramError::NotImage);
+    }
+
+    media_vec.append(
+        &mut wow
+            .filter(|x| {
+                x.metadata
+                    .clone()
+                    .content_type
+                    .unwrap_or_default()
+                    .starts_with("image/")
+            })
+            .map(|x| InputMedia::Photo(InputMediaPhoto::new(InputFile::memory(x.contents))))
+            .collect(),
+    );
+
+    bot.send_media_group(ChatId(chat_id), media_vec)
+        .await
+        .context("error sending photos")?;
+
+    Ok(())
+}
+
 pub fn tele_router() -> Router<AppState> {
     let verified_user_routes = Router::new()
         .route("/message/:chat_id", post(send_tele_msg))
+        .route(
+            "/media/:chat_id",
+            post(send_tele_media).layer(DefaultBodyLimit::max(50 * 1024 * 1024)),
+        )
         .route_layer(predicate_required!(
             is_telegram_user,
             (StatusCode::UNAUTHORIZED, "not verified").to_owned()

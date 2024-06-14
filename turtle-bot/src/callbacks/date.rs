@@ -74,7 +74,7 @@ fn date_keyboard(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup
     let weekday_of_first_day = then.with_day(1).ok_or(DateError::None)?.weekday();
 
     match weekday_of_first_day {
-        Weekday::Mon => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 0]),
+        Weekday::Mon => calendar_vec.append(&mut vec![]),
         Weekday::Tue => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]),
         Weekday::Wed => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]),
         Weekday::Thu => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]),
@@ -127,7 +127,7 @@ fn date_keyboard(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup
         Weekday::Thu => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]),
         Weekday::Fri => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]),
         Weekday::Sat => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]),
-        Weekday::Sun => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 0]),
+        Weekday::Sun => calendar_vec.append(&mut vec![]),
     }
 
     let mut calendar = date_keyboard_pagination_row(month, year, past_future_month_year, now)?;
