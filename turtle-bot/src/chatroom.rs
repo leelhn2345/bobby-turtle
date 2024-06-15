@@ -197,6 +197,13 @@ pub async fn leave(pool: &PgPool, chat_id: i64) -> Result<(), ChatRoomError> {
     } else {
         return Err(ChatRoomError::NoRecordFound);
     };
+
+    sqlx::query!(
+        "delete from telegram_whisperers where telegram_chat_id = $1",
+        chat_id
+    )
+    .execute(&mut *tx)
+    .await?;
     tx.commit()
         .await
         .context("failed to commit sql transaction to store new chatroom.")?;
