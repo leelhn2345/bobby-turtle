@@ -244,6 +244,7 @@ async fn save_chat_logs(
     username: Option<&String>,
 ) -> Result<(), ChatError> {
     let role_str = role.to_string();
+    let now = Utc::now();
     sqlx::query!(
         r#"
         INSERT INTO chatlogs 
@@ -254,7 +255,7 @@ async fn save_chat_logs(
         username,
         role_str,
         content,
-        Utc::now()
+        now
     )
     .execute(&mut **tx)
     .await
