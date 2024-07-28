@@ -108,8 +108,8 @@ pub fn app_router(
         })
         .on_response(
             |response: &Response<Body>, latency: std::time::Duration, span: &Span| {
-                span.record("status_code", &tracing::field::display(response.status()));
-                span.record("latency", &tracing::field::debug(latency));
+                span.record("status_code", tracing::field::display(response.status()));
+                span.record("latency", tracing::field::debug(latency));
                 // add tracing below here
                 // useful if using bunyan trace format
             },
