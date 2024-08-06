@@ -16,7 +16,7 @@ use figment::{
 use serde::Deserialize;
 use stickers::Stickers;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::filter::Targets;
+use tracing_subscriber::{filter::Targets, util::SubscriberInitExt};
 use tracing_subscriber::{fmt, layer::SubscriberExt};
 
 #[derive(Deserialize, Debug, Clone)]
@@ -60,9 +60,8 @@ pub fn init_tracing(env: &Environment, targets: Vec<&str>) {
         .with_line_number(true)
         .with_target(false);
 
-    let subscriber = tracing_subscriber::registry()
+    tracing_subscriber::registry()
         .with(format_layer)
-        .with(target_filter);
-
-    tracing::subscriber::set_global_default(subscriber).expect("failed to set tracing subscriber");
+        .with(target_filter)
+        .init();
 }
