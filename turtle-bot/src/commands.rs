@@ -1,6 +1,4 @@
 use anyhow::{anyhow, Context};
-use chrono::{Duration, Utc};
-use chrono_tz::Tz;
 use gaia::stickers::Stickers;
 use rand::{
     distributions::{Alphanumeric, DistString},
@@ -8,6 +6,7 @@ use rand::{
 };
 use sqlx::PgPool;
 use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
+use time::{format_description::well_known::Rfc2822, macros::offset, OffsetDateTime};
 
 use crate::{
     bot::{BotDialogue, ChatState},
@@ -86,7 +85,7 @@ impl Command {
                             values ($1, $2, $3)",
                             user_id_i64,
                             chat_id.0,
-                            Utc::now()
+                            OffsetDateTime::now_utc()
                         )
                         .execute(&pool)
                         .await
@@ -128,7 +127,7 @@ impl Command {
                             .await?;
                     } else {
                         let token = Alphanumeric.sample_string(&mut thread_rng(), 16);
-                        let expiry = Utc::now() + Duration::minutes(3);
+                        let expiry = OffsetDateTime::now_utc() + time::Duration::minutes(3);
                         sqlx::query!(
                             "insert into telegram_tokens
                             (telegram_token, telegram_user_id, telegram_username, expiry)
@@ -154,10 +153,9 @@ impl Command {
                     .await?;
             }
             Self::DateTime => {
-                let now = Utc::now()
-                    .with_timezone(&Tz::Singapore)
-                    .format("%v\n%r")
-                    .to_string();
+                let now = OffsetDateTime::now_utc()
+                    .to_offset(offset!(+8))
+                    .format(&Rfc2822)?;
                 bot.send_message(chat_id, now).await?;
             }
             Self::Chat => {
@@ -195,23 +193,5 @@ impl Command {
             }
         };
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use chrono::Utc;
-    use chrono_tz::Tz;
-
-    #[test]
-    fn timezone() {
-        let timezone = Tz::America__Chicago;
-
-        // Get the current date and time in the specified location
-        let wow = Utc::now().with_timezone(&timezone);
-        // .format("%v\n%r")
-        // .to_string();
-
-        println!("{wow}");
     }
 }

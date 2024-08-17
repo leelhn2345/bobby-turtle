@@ -1,6 +1,5 @@
 use anyhow::Context;
 use axum::extract::{Query, State};
-use chrono::{DateTime, Duration, Utc};
 use password_auth::generate_hash;
 use rand::{
     distributions::{Alphanumeric, DistString},
@@ -9,6 +8,7 @@ use rand::{
 use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::{PgPool, Postgres, Transaction};
+use time::OffsetDateTime;
 use tokio::task;
 use utoipa::IntoParams;
 use uuid::Uuid;
@@ -150,7 +150,7 @@ pub async fn check_reset_token_validity(
         .context("failed to retreive expiry datetime with associated reset token")?
         .ok_or(UserError::NotFound)?;
 
-    if Utc::now() >= expiry_datetime {
+    if OffsetDateTime::now_utc() >= expiry_datetime {
         delete_reset_token(&mut tx, &query.reset_token)
             .await
             .context("can't delete invalid token")?;
@@ -165,7 +165,7 @@ pub async fn check_reset_token_validity(
 async fn get_password_reset_token_expiry(
     tx: &mut Transaction<'_, Postgres>,
     reset_token: &str,
-) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+) -> Result<Option<OffsetDateTime>, sqlx::Error> {
     let res = sqlx::query!(
         "select expires from reset_password_tokens where reset_token = $1",
         reset_token
@@ -234,7 +234,7 @@ pub async fn insert_token_into_reset_password_table(
     user_id: Uuid,
     token: &str,
 ) -> Result<(), sqlx::Error> {
-    let expiry_datetime = Utc::now() + Duration::hours(1);
+    let expiry_datetime = OffsetDateTime::now_utc() + time::Duration::hours(1);
     sqlx::query!(
         "insert into reset_password_tokens (reset_token, user_id, expires)
         values ($1, $2, $3)

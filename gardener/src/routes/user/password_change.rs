@@ -1,9 +1,9 @@
 use anyhow::Context;
 use axum::{extract::State, Json};
-use chrono::Utc;
 use password_auth::{generate_hash, verify_password};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use time::OffsetDateTime;
 use tokio::task;
 use utoipa::ToSchema;
 use validator::Validate;
@@ -50,7 +50,7 @@ pub async fn change_password(
         .await
         .context("problem generating password hash")?;
 
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     sqlx::query!(
         "update users 
         set 

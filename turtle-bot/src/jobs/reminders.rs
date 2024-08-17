@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use teloxide::{requests::Requester, types::ChatId, Bot};
+use time::OffsetDateTime;
 use tokio_cron_scheduler::Job;
 use uuid::Uuid;
 
@@ -14,7 +14,7 @@ struct Reminder {
     target: i64,
     message: String,
     username: String,
-    due: DateTime<Utc>,
+    due: OffsetDateTime,
 }
 
 struct RemindMetadata {
@@ -36,12 +36,12 @@ pub async fn get_reminders(bot: &Bot, pool: &PgPool) -> Result<Vec<Job>, CronJob
         return Ok(Vec::new());
     }
 
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let mut job_vec: Vec<Job> = Vec::new();
     let mut job_metadata: Vec<RemindMetadata> = Vec::new();
 
     for remind in reminders {
-        let time_delta_secs = (remind.due - now).num_seconds();
+        let time_delta_secs = (remind.due - now).whole_seconds();
         let seconds = u64::from_le_bytes(time_delta_secs.to_le_bytes());
 
         let remindx = remind.clone();

@@ -9,8 +9,8 @@ use axum::{
 };
 use axum_login::{login_required, predicate_required};
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
-use chrono::Utc;
 use serde::Serialize;
+use sqlx::types::time::OffsetDateTime;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
@@ -197,7 +197,7 @@ pub async fn verify_telegram_user(
     .context("failed to check if token exists")?
     .ok_or(TelegramError::NotFound)?;
 
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
 
     if now >= expiry_record.expiry {
         let pool = app.pool;

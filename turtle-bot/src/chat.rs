@@ -8,7 +8,6 @@ use async_openai::{
     },
     Client,
 };
-use chrono::Utc;
 use sqlx::{PgPool, Postgres, Transaction};
 use teloxide::{
     payloads::SendMessageSetters,
@@ -16,6 +15,7 @@ use teloxide::{
     types::{Message, ParseMode, ReplyParameters},
     Bot, RequestError,
 };
+use time::OffsetDateTime;
 
 use crate::bot::BOT_NAME;
 
@@ -244,7 +244,7 @@ async fn save_chat_logs(
     username: Option<&String>,
 ) -> Result<(), ChatError> {
     let role_str = role.to_string();
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     sqlx::query!(
         r#"
         INSERT INTO chatlogs 

@@ -9,11 +9,11 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use axum_login::login_required;
-use chrono::{DateTime, Utc};
 use password_auth::VerifyError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use time::OffsetDateTime;
 use tower_sessions::cookie::Cookie;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -45,11 +45,11 @@ pub struct User {
     #[schema(default = "user")]
     last_name: Option<String>,
 
-    #[serde(skip_deserializing, default = "Utc::now")]
-    joined_at: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339", default = "OffsetDateTime::now_utc")]
+    joined_at: OffsetDateTime,
 
-    #[serde(skip_deserializing, default = "Utc::now")]
-    last_updated: DateTime<Utc>,
+    #[serde(with = "time::serde::rfc3339", default = "OffsetDateTime::now_utc")]
+    last_updated: OffsetDateTime,
 
     #[serde(skip_deserializing, default = "PermissionLevel::member")]
     permission_level: PermissionLevel,

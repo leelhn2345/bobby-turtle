@@ -1,9 +1,9 @@
 //! for apis relating to telegram chatroom
 
 use anyhow::Context;
-use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Postgres, Transaction};
 use teloxide::types::Message;
+use time::OffsetDateTime;
 
 use crate::handlers::is_group_chat;
 
@@ -31,9 +31,9 @@ pub enum ChatRoomError {
 pub struct ChatRoom {
     id: i64,
     title: Option<String>,
-    joined_at: DateTime<Utc>,
+    joined_at: OffsetDateTime,
     is_group: bool,
-    left_at: Option<DateTime<Utc>>,
+    left_at: Option<OffsetDateTime>,
 }
 impl ChatRoom {
     pub fn new(msg: &Message) -> Self {
@@ -44,7 +44,7 @@ impl ChatRoom {
         ChatRoom {
             id: msg.chat.id.0,
             title: chat_title,
-            joined_at: Utc::now(),
+            joined_at: OffsetDateTime::now_utc(),
             is_group,
             left_at: None,
         }
@@ -189,7 +189,7 @@ pub async fn leave(pool: &PgPool, chat_id: i64) -> Result<(), ChatRoomError> {
                  SET left_at = $1
                  WHERE id = $2
                  "#,
-            Utc::now(),
+            OffsetDateTime::now_utc(),
             chat_id,
         )
         .execute(&mut *tx)

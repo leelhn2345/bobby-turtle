@@ -1,6 +1,4 @@
 use anyhow::bail;
-use chrono::{Datelike, Utc};
-use chrono_tz::Tz;
 use gaia::stickers::Stickers;
 use teloxide::{
     payloads::{EditMessageTextSetters, SendMessageSetters},
@@ -11,6 +9,7 @@ use teloxide::{
     },
     Bot,
 };
+use time::{macros::offset, OffsetDateTime};
 
 use crate::{
     callbacks::{date_page, expired_callback_msg, CallbackPage},
@@ -111,10 +110,10 @@ pub async fn occurence_callback(
     };
     match occurence {
         OccurenceState::OneOff => {
-            let now = Utc::now().with_timezone(&Tz::Singapore);
+            let now = OffsetDateTime::now_utc().to_offset(offset!(+8));
             p.update(CallbackPage::RemindDate).await?;
             tracing::debug!("changed callback state to date");
-            date_page(bot, chat.id, *id, now.day(), now.month(), now.year()).await?;
+            date_page(bot, chat.id, *id, now.day(), now.month().into(), now.year()).await?;
         }
         OccurenceState::Recurring => {
             bot.delete_message(chat.id, *id).await?;

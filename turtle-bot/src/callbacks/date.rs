@@ -1,6 +1,4 @@
 use anyhow::bail;
-use chrono::{DateTime, Datelike, NaiveDate, Utc, Weekday};
-use chrono_tz::Tz;
 use teloxide::{
     payloads::EditMessageTextSetters,
     requests::Requester,
@@ -8,6 +6,11 @@ use teloxide::{
         CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId,
     },
     Bot,
+};
+use time::{
+    error::ComponentRange,
+    macros::{format_description, offset},
+    Date, Month, OffsetDateTime, Weekday,
 };
 
 use crate::callbacks::expired_callback_msg;
@@ -20,17 +23,14 @@ const DATE_PICK_MSG: &str = "Pick your date 🐢";
 
 #[derive(thiserror::Error, Debug)]
 pub enum DateError {
-    #[error("chrono crate returns no data")]
+    #[error("empty data")]
     None,
 
-    #[error("{0}")]
-    Parse(String),
+    #[error("time crate error: {0}")]
+    Time(#[from] ComponentRange),
 
     #[error("Invalid data chosen")]
     InvalidData,
-
-    #[error("wrong era")]
-    WrongEra,
 
     #[error("No callback data")]
     NoCallbackData,
@@ -43,8 +43,8 @@ pub async fn date_page(
     bot: Bot,
     chat_id: ChatId,
     msg_id: MessageId,
-    day: u32,
-    month: u32,
+    day: u8,
+    month: u8,
     year: i32,
 ) -> anyhow::Result<()> {
     let keyboard = date_keyboard(day, month, year)?;
@@ -54,42 +54,48 @@ pub async fn date_page(
     Ok(())
 }
 
-fn date_keyboard(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup, DateError> {
-    let now = Utc::now().with_timezone(&Tz::Singapore);
+fn date_keyboard(day: u8, month: u8, year: i32) -> Result<InlineKeyboardMarkup, DateError> {
+    let now = OffsetDateTime::now_utc().to_offset(offset!(+8));
 
-    let then = now
-        .with_year(year)
-        .ok_or(DateError::None)?
-        .with_month(month)
-        .ok_or(DateError::None)?;
+    let month: Month = month.try_into()?;
+    let then = now.replace_year(year)?.replace_month(month)?;
 
     // the earliest possible date is today, hence if `then` > `now`,
     // change to specified date
     if then > now {
-        then.with_day(day).ok_or(DateError::None)?;
+        then.replace_day(day)?;
     }
 
     let mut calendar_vec: Vec<InlineKeyboardButton> = Vec::new();
-
-    let weekday_of_first_day = then.with_day(1).ok_or(DateError::None)?.weekday();
+    let weekday_of_first_day = then.replace_day(1)?.weekday();
 
     match weekday_of_first_day {
-        Weekday::Mon => calendar_vec.append(&mut vec![]),
-        Weekday::Tue => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]),
-        Weekday::Wed => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]),
-        Weekday::Thu => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]),
-        Weekday::Fri => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 4]),
-        Weekday::Sat => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 5]),
-        Weekday::Sun => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 6]),
+        Weekday::Monday => calendar_vec.append(&mut vec![]),
+        Weekday::Tuesday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]);
+        }
+        Weekday::Wednesday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]);
+        }
+        Weekday::Thursday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]);
+        }
+        Weekday::Friday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 4]);
+        }
+        Weekday::Saturday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 5]);
+        }
+        Weekday::Sunday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 6]);
+        }
     };
 
-    let days_passed_in_curr_month = (day - 1)
-        .try_into()
-        .map_err(|_| DateError::Parse("can't parse into usize".to_string()))?;
+    let days_passed_in_curr_month = day - 1;
 
     calendar_vec.append(&mut vec![
         InlineKeyboardButton::callback(" ", " ");
-        days_passed_in_curr_month
+        days_passed_in_curr_month.into()
     ]);
 
     let past_future_month_year = get_past_future_month_year(month, year);
@@ -100,37 +106,45 @@ fn date_keyboard(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup
         ..
     } = past_future_month_year;
 
-    let naive_last_day_of_month = NaiveDate::from_ymd_opt(year_of_next_month, next_month, 1)
-        .ok_or(DateError::None)?
-        .pred_opt()
-        .ok_or(DateError::None)?
-        .day();
-    let last_day_of_month = then
-        .with_day(naive_last_day_of_month)
-        .ok_or(DateError::None)?
-        .day();
+    let naive_last_day_of_month =
+        Date::from_calendar_date(year_of_next_month, next_month.try_into()?, 1)?
+            .previous_day()
+            .ok_or(DateError::None)?
+            .day();
+    let last_day_of_month = then.replace_day(naive_last_day_of_month)?.day();
 
     let mut wow = (day..=last_day_of_month)
         .map(|i| InlineKeyboardButton::callback(i.to_string(), format!("{i}-{month}-{year}")))
         .collect();
     calendar_vec.append(&mut wow);
 
-    let last_weekday_of_month = then
-        .with_day(last_day_of_month)
-        .ok_or(DateError::None)?
-        .weekday();
+    let last_weekday_of_month = then.replace_day(last_day_of_month)?.weekday();
 
     match last_weekday_of_month {
-        Weekday::Mon => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 6]),
-        Weekday::Tue => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 5]),
-        Weekday::Wed => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 4]),
-        Weekday::Thu => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]),
-        Weekday::Fri => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]),
-        Weekday::Sat => calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]),
-        Weekday::Sun => calendar_vec.append(&mut vec![]),
+        Weekday::Monday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 6]);
+        }
+        Weekday::Tuesday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 5]);
+        }
+        Weekday::Wednesday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 4]);
+        }
+        Weekday::Thursday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 3]);
+        }
+        Weekday::Friday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 2]);
+        }
+        Weekday::Saturday => {
+            calendar_vec.append(&mut vec![InlineKeyboardButton::callback(" ", " "); 1]);
+        }
+
+        Weekday::Sunday => calendar_vec.append(&mut vec![]),
     }
 
-    let mut calendar = date_keyboard_pagination_row(month, year, past_future_month_year, now)?;
+    let mut calendar =
+        date_keyboard_pagination_row(month.into(), year, past_future_month_year, now)?;
 
     for week in calendar_vec.chunks(7) {
         calendar.push(week.to_owned());
@@ -144,10 +158,10 @@ fn date_keyboard(day: u32, month: u32, year: i32) -> Result<InlineKeyboardMarkup
 }
 
 fn date_keyboard_pagination_row(
-    month: u32,
+    month: u8,
     year: i32,
     data: PastFutureMonthYear,
-    now: DateTime<Tz>,
+    now: OffsetDateTime,
 ) -> Result<Vec<Vec<InlineKeyboardButton>>, DateError> {
     let month_name = parse_month_to_str(month)?;
     let calendar_title =
@@ -161,19 +175,16 @@ fn date_keyboard_pagination_row(
     } = data;
 
     let prev_month_first_day = now
-        .with_year(year_of_prev_month)
-        .ok_or(DateError::None)?
-        .with_month(prev_month)
-        .ok_or(DateError::None)?
-        .with_day(1)
-        .ok_or(DateError::None)?;
+        .replace_year(year_of_prev_month)?
+        .replace_month(prev_month.try_into()?)?
+        .replace_day(1)?;
 
     let prev_month_calendar = if prev_month_first_day > now {
         let prev_month_date = format!("01-{prev_month}-{year_of_prev_month} <<");
         InlineKeyboardButton::callback("<<", prev_month_date.clone())
     } else {
         let curr_day = now.day();
-        let curr_month = now.month();
+        let curr_month: u8 = now.month().into();
         let curr_year = now.year();
         if prev_month == curr_month && year_of_prev_month == curr_year {
             let prev_month_date = format!("{curr_day}-{prev_month}-{year_of_prev_month} <<");
@@ -208,15 +219,16 @@ fn date_keyboard_pagination_row(
 #[allow(clippy::struct_field_names)]
 #[derive(Copy, Clone)]
 struct PastFutureMonthYear {
-    prev_month: u32,
+    prev_month: u8,
     year_of_prev_month: i32,
-    next_month: u32,
+    next_month: u8,
     year_of_next_month: i32,
 }
 
 /// Gets the information needed for prev and next month.
 /// Needed for pagination of calendar.
-fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
+fn get_past_future_month_year(month: Month, year: i32) -> PastFutureMonthYear {
+    let month: u8 = month.into();
     let prev_month = if month <= 1 { 12 } else { month - 1 };
     let year_of_prev_month = if month <= 1 { year - 1 } else { year };
     let next_month = if month >= 12 { 1 } else { month + 1 };
@@ -230,7 +242,7 @@ fn get_past_future_month_year(month: u32, year: i32) -> PastFutureMonthYear {
     }
 }
 
-fn parse_month_to_str(month: u32) -> Result<&'static str, DateError> {
+fn parse_month_to_str(month: u8) -> Result<&'static str, DateError> {
     match month {
         1 => Ok("Jan"),
         2 => Ok("Feb"),
@@ -249,20 +261,15 @@ fn parse_month_to_str(month: u32) -> Result<&'static str, DateError> {
 }
 
 async fn send_prev_or_next_month(
-    d: NaiveDate,
+    d: Date,
     chat_id: ChatId,
     msg_id: MessageId,
     bot: Bot,
 ) -> anyhow::Result<()> {
-    let naive_day = d.day0() + 1;
-    let naive_month = d.month0() + 1;
-    let ce_year_of_naive_month = d.year_ce();
-    let naive_year = i32::from_le_bytes(ce_year_of_naive_month.1.to_le_bytes());
-    if !ce_year_of_naive_month.0 {
-        tracing::error!("year of wrong era - {}", naive_year);
-        return Err(DateError::WrongEra.into());
-    }
-    let calendar = date_keyboard(naive_day, naive_month, naive_year)?;
+    let day = d.day();
+    let month: u8 = d.month().into();
+    let year = d.year();
+    let calendar = date_keyboard(day, month, year)?;
     bot.edit_message_text(chat_id, msg_id, DATE_PICK_MSG)
         .reply_markup(calendar)
         .await?;
@@ -286,22 +293,23 @@ pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyh
     if data.trim().is_empty() {
         return Ok(());
     } else if data.strip_suffix(" <<").is_some() {
-        let naive_prev_month = NaiveDate::parse_from_str(&data, "%d-%m-%Y <<")?;
-        send_prev_or_next_month(naive_prev_month, chat.id, *id, bot).await?;
+        let prev_month_format = format_description!("[day]-[month repr:long]-[year] <<");
+        let prev_month = Date::parse(data, prev_month_format)?;
+        send_prev_or_next_month(prev_month, chat.id, *id, bot).await?;
     } else if data.strip_prefix(">> ").is_some() {
-        let naive_next_month = NaiveDate::parse_from_str(&data, ">> %d-%m-%Y")?;
-        send_prev_or_next_month(naive_next_month, chat.id, *id, bot).await?;
-    } else if NaiveDate::parse_from_str(&data, "%d-%m-%Y").is_ok() {
-        let naive_date = NaiveDate::parse_from_str(&data, "%d-%m-%Y")?;
-
+        let next_month_format = format_description!(">> [day]-[month repr:long]-[year]");
+        let next_month = Date::parse(data, next_month_format)?;
+        send_prev_or_next_month(next_month, chat.id, *id, bot).await?;
+    } else if Date::parse(data, format_description!("[day]-[month repr:long]-[year]")).is_ok() {
+        let date = Date::parse(data, format_description!("[day]-[month repr:long]-[year]"))?;
         let remind_time = RemindTime::default();
         p.update(CallbackPage::RemindDateTime {
-            date: naive_date,
+            date,
             time: remind_time.clone(),
         })
         .await?;
 
-        time_page(bot, chat.id, *id, naive_date, remind_time).await?;
+        time_page(bot, chat.id, *id, date, remind_time).await?;
     } else {
         match data.as_ref() {
             OCCURENCE => {
@@ -309,8 +317,8 @@ pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyh
                 occurence_page(bot, chat.id, *id).await?;
             }
             CURRENT_MONTH => {
-                let now = Utc::now().with_timezone(&Tz::Singapore);
-                date_page(bot, chat.id, *id, now.day(), now.month(), now.year()).await?;
+                let now = OffsetDateTime::now_utc().to_offset(offset!(+8));
+                date_page(bot, chat.id, *id, now.day(), now.month().into(), now.year()).await?;
             }
             unknown => {
                 tracing::error!(unknown, "unrecognizable value");
@@ -321,4 +329,16 @@ pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyh
     };
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use time::{macros::format_description, Date};
+
+    #[test]
+    fn date_parse() {
+        let zzz = "17-August-2024";
+        let date = Date::parse(zzz, format_description!("[day]-[month repr:long]-[year]"));
+        println!("{date:#?}");
+    }
 }
