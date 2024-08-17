@@ -7,9 +7,9 @@ use axum::{
     Router,
 };
 use axum_extra::extract::CookieJar;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use time::OffsetDateTime;
 use tower_sessions::{
     cookie::{Cookie, Expiration},
     Session,
@@ -42,8 +42,8 @@ struct GuestData {
     wtf: usize,
     zz: Option<usize>,
     pageviews: usize,
-    first_seen: DateTime<Utc>,
-    last_seen: DateTime<Utc>,
+    first_seen: OffsetDateTime,
+    last_seen: OffsetDateTime,
 }
 
 impl Default for GuestData {
@@ -53,8 +53,8 @@ impl Default for GuestData {
             wtf: 1,
             zz: None,
             pageviews: 0,
-            first_seen: Utc::now(),
-            last_seen: Utc::now(),
+            first_seen: OffsetDateTime::now_utc(),
+            last_seen: OffsetDateTime::now_utc(),
         }
     }
 }
@@ -75,11 +75,11 @@ pub struct Guest {
 impl Guest {
     const GUEST_DATA_KEY: &'static str = "guest.data";
 
-    fn first_seen(&self) -> DateTime<Utc> {
+    fn first_seen(&self) -> OffsetDateTime {
         self.guest_data.first_seen
     }
 
-    fn last_seen(&self) -> DateTime<Utc> {
+    fn last_seen(&self) -> OffsetDateTime {
         self.guest_data.last_seen
     }
 
@@ -142,7 +142,7 @@ where
             .unwrap_or_default()
             .unwrap_or_default();
 
-        guest_data.last_seen = Utc::now();
+        guest_data.last_seen = OffsetDateTime::now_utc();
 
         Self::update_session(&session, &guest_data).await;
 

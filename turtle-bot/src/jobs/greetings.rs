@@ -117,6 +117,8 @@ async fn greeting(
     for cron_job in jobs_in_db {
         let bot = bot.clone();
         let sticker = sticker.to_owned();
+
+        // TODO: remove `chrono_tz` dependency
         let job = Job::new_async_tz(cron_job.cron_str.as_str(), Tz::Singapore, move |_, _| {
             let bot = bot.clone();
             let sticker = sticker.clone();

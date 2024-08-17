@@ -7,11 +7,11 @@ use teloxide::{
 
 #[tracing::instrument(skip_all)]
 pub async fn expired_callback(bot: Bot, q: CallbackQuery) -> anyhow::Result<()> {
-    let Some(Message { id, chat, .. }) = q.message else {
+    let Some(Message { id, chat, .. }) = q.regular_message() else {
         tracing::error!("no message data from telegram");
         bail!("no query message")
     };
-    expired_callback_msg(bot, chat.id, id).await?;
+    expired_callback_msg(bot, chat.id, *id).await?;
     Ok(())
 }
 

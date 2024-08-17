@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
-    types::{Message, User},
+    types::{Message, ReplyParameters, User},
     Bot,
 };
 
@@ -97,7 +97,7 @@ pub async fn handle_member_join(bot: Bot, msg: Message, stickers: Stickers) -> R
                     format!("Hello {}!", user.first_name)
                 };
                 bot.send_message(msg.chat.id, text)
-                    .reply_to_message_id(msg.id)
+                    .reply_parameters(ReplyParameters::new(msg.id))
                     .await?;
                 Ok(())
             }
@@ -133,7 +133,7 @@ pub async fn handle_member_leave(
     let text = format!("Sayanora {} ~~ 😭😭😭", member.full_name());
     send_sticker(&bot, &msg.chat.id, stickers.sad).await?;
     bot.send_message(msg.chat.id, text)
-        .reply_to_message_id(msg.id)
+        .reply_parameters(ReplyParameters::new(msg.id))
         .await?;
     Ok(())
 }

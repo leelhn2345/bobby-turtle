@@ -6,7 +6,6 @@ mod commands;
 mod handlers;
 mod jobs;
 mod member;
-mod sched;
 mod sticker;
 
 use anyhow::Context;
@@ -43,19 +42,21 @@ pub async fn start_bot(tele_bot: Bot, env: Environment, settings: Settings, pool
 
     let handler = bot_handler();
 
-    Dispatcher::builder(tele_bot, handler)
-        .dependencies(dptree::deps![
-            settings.stickers,
-            chatgpt,
-            pool,
-            InMemStorage::<ChatState>::new(),
-            InMemStorage::<CallbackPage>::new(),
-            sched
-        ])
-        .enable_ctrlc_handler()
-        .build()
-        .dispatch_with_listener(listener, LoggingErrorHandler::new())
-        .await;
+    Box::pin(
+        Dispatcher::builder(tele_bot, handler)
+            .dependencies(dptree::deps![
+                settings.stickers,
+                chatgpt,
+                pool,
+                InMemStorage::<ChatState>::new(),
+                InMemStorage::<CallbackPage>::new(),
+                sched
+            ])
+            .enable_ctrlc_handler()
+            .build()
+            .dispatch_with_listener(listener, LoggingErrorHandler::new()),
+    )
+    .await;
 }
 
 fn get_webhook_options(settings: &AppSettings, env: &Environment) -> Options {

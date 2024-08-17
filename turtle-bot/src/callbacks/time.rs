@@ -1,6 +1,4 @@
 use anyhow::bail;
-use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
-use chrono_tz::Tz;
 use teloxide::{
     payloads::EditMessageTextSetters,
     requests::Requester,
@@ -8,6 +6,10 @@ use teloxide::{
         CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId,
     },
     Bot,
+};
+use time::{
+    macros::{format_description, offset},
+    Date, OffsetDateTime,
 };
 
 use crate::callbacks::expired_callback_msg;
@@ -26,12 +28,6 @@ const TEN_HOUR_DOWN: &str = "TenHourDown";
 const HOUR_DOWN: &str = "HourDown";
 const TEN_MINUTE_DOWN: &str = "TenMinuteDown";
 const MINUTE_DOWN: &str = "MinuteDown";
-
-#[derive(thiserror::Error, Debug)]
-pub enum TimePickError {
-    #[error("Unparseble by chrono crate")]
-    ChronoNone,
-}
 
 enum TimeSelect {
     TenHourUp,
@@ -82,10 +78,10 @@ impl TryFrom<String> for TimeSelect {
 }
 #[derive(Clone, Debug)]
 pub struct RemindTime {
-    pub tenth_hour: u32,
-    pub hour: u32,
-    pub tenth_minute: u32,
-    pub minute: u32,
+    pub tenth_hour: u8,
+    pub hour: u8,
+    pub tenth_minute: u8,
+    pub minute: u8,
 }
 
 impl Default for RemindTime {
@@ -100,7 +96,7 @@ impl Default for RemindTime {
 }
 
 impl RemindTime {
-    fn new(hour: u32, minute: u32) -> Result<Self, String> {
+    fn new(hour: u8, minute: u8) -> Result<Self, String> {
         if hour > 23 {
             return Err(format!("invalid hour: {hour}"));
         }
@@ -229,12 +225,12 @@ pub async fn time_page(
     bot: Bot,
     chat_id: ChatId,
     msg_id: MessageId,
-    naive_date: NaiveDate,
+    naive_date: Date,
     remind_time: RemindTime,
 ) -> anyhow::Result<()> {
-    let month = naive_date.month0() + 1;
-    let day = naive_date.day0() + 1;
-    let year = naive_date.year_ce().1;
+    let month = naive_date.month();
+    let day = naive_date.day();
+    let year = naive_date.year();
     let text = format!(
         r"You have chosen: 
 
@@ -260,12 +256,7 @@ The time is in 24 hours format."
 }
 
 #[tracing::instrument(skip_all)]
-fn time_keyboard(
-    tenth_hour: u32,
-    hour: u32,
-    tenth_minute: u32,
-    minute: u32,
-) -> InlineKeyboardMarkup {
+fn time_keyboard(tenth_hour: u8, hour: u8, tenth_minute: u8, minute: u8) -> InlineKeyboardMarkup {
     let up_arrow: &str = "↑";
 
     tracing::debug!(?tenth_hour);
@@ -314,14 +305,14 @@ pub async fn time_callback(
     bot: Bot,
     q: CallbackQuery,
     p: CallbackState,
-    (naive_date, remind_time): (NaiveDate, RemindTime),
+    (naive_date, remind_time): (Date, RemindTime),
 ) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
-    let Some(data) = q.data else {
+    bot.answer_callback_query(q.id.clone()).await?;
+    let Some(ref data) = q.data else {
         tracing::error!("query data is None. should contain string or empty spaces.");
         bail!("no callback query data")
     };
-    let Some(msg) = q.message else {
+    let Some(msg) = q.regular_message() else {
         tracing::error!("no message data from telegram");
         bail!("no telegram message data")
     };
@@ -334,36 +325,62 @@ pub async fn time_callback(
         return Ok(());
     }
 
-    let now = Utc::now().with_timezone(&Tz::Singapore);
+    let now = OffsetDateTime::now_utc().to_offset(offset!(+8));
 
     match data.as_ref() {
         BACK => {
             p.update(CallbackPage::RemindDate).await?;
-            date_page(bot, chat.id, *msg_id, now.day(), now.month(), now.year()).await?;
+            date_page(
+                bot,
+                chat.id,
+                *msg_id,
+                now.day(),
+                now.month().into(),
+                now.year(),
+            )
+            .await?;
         }
         NEXT => {
+            tracing::debug!("Next is pressed");
             let hour = remind_time.tenth_hour * 10 + remind_time.hour;
             let minute = remind_time.tenth_minute * 10 + remind_time.minute;
 
-            let Some(naive_datetime) = naive_date.and_hms_opt(hour, minute, 0) else {
-                tracing::error!("can't parse {remind_time:#?} into naive datetime");
-                bail!("can't parse remind_time into naive datetime");
-            };
+            let naive_datetime = naive_date.with_hms(hour, minute, 0)?;
+            tracing::debug!("{naive_datetime:#?}");
+
             let chosen_datetime = naive_datetime
-                .and_utc()
-                .with_timezone(&Tz::Singapore)
-                .with_year(naive_datetime.year())
-                .ok_or(TimePickError::ChronoNone)?
-                .with_month(naive_datetime.month())
-                .ok_or(TimePickError::ChronoNone)?
-                .with_day(naive_datetime.day())
-                .ok_or(TimePickError::ChronoNone)?
-                .with_hour(hour)
-                .ok_or(TimePickError::ChronoNone)?
-                .with_minute(minute)
-                .ok_or(TimePickError::ChronoNone)?;
+                .assume_utc()
+                .to_offset(offset!(+8))
+                .replace_year(naive_datetime.year())
+                .map_err(|e| {
+                    tracing::debug!("year");
+                    e
+                })?
+                .replace_month(naive_datetime.month())
+                .map_err(|e| {
+                    tracing::debug!("month");
+                    e
+                })?
+                .replace_day(naive_datetime.day())
+                .map_err(|e| {
+                    tracing::debug!("day");
+                    e
+                })?
+                .replace_hour(hour)
+                .map_err(|e| {
+                    tracing::debug!("hour");
+                    e
+                })?
+                .replace_minute(minute)
+                .map_err(|e| {
+                    tracing::debug!("minute");
+                    e
+                })?;
+
+            tracing::debug!("{chosen_datetime:#?}");
 
             time_check(&bot, chat.id, chosen_datetime, now).await?;
+            tracing::debug!("time has been checked");
 
             p.update(CallbackPage::ConfirmDateTime {
                 date_time: chosen_datetime,
@@ -374,7 +391,7 @@ pub async fn time_callback(
         }
         _ => {
             let mut remind_time = remind_time;
-            let time_select: TimeSelect = match data.try_into() {
+            let time_select: TimeSelect = match data.clone().try_into() {
                 Ok(x) => x,
                 Err(e) => {
                     tracing::error!(e);
@@ -409,13 +426,13 @@ pub async fn change_time_callback(
     bot: Bot,
     q: CallbackQuery,
     p: CallbackState,
-    date_time: DateTime<Tz>,
+    date_time: OffsetDateTime,
 ) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
+    bot.answer_callback_query(q.id.clone()).await?;
 
     let Some(Message {
         id: msg_id, chat, ..
-    }) = q.message
+    }) = q.regular_message()
     else {
         tracing::error!("no message data from telegram");
         bail!("no query message data");
@@ -427,7 +444,7 @@ pub async fn change_time_callback(
         bail!("can't parse datetime");
     };
 
-    let naive_date = date_time.date_naive();
+    let naive_date = date_time.date();
 
     p.update(CallbackPage::RemindDateTime {
         date: naive_date,
@@ -435,19 +452,20 @@ pub async fn change_time_callback(
     })
     .await?;
 
-    time_page(bot, chat.id, msg_id, naive_date, remind_time).await?;
+    time_page(bot, chat.id, *msg_id, naive_date, remind_time).await?;
     Ok(())
 }
 
 pub async fn time_check(
     bot: &Bot,
     chat_id: ChatId,
-    chosen_datetime: DateTime<Tz>,
-    now: DateTime<Tz>,
+    chosen_datetime: OffsetDateTime,
+    now: OffsetDateTime,
 ) -> anyhow::Result<()> {
     if chosen_datetime < now {
         tracing::error!("chosen datetime is in the past");
-        let current_time = now.time().format("%H:%M:%S").to_string();
+        let format = format_description!("[hour]:[minute]:[second]");
+        let current_time = now.time().format(&format)?;
         let text = format!(
             r"You can't send a message into the past. ❌
 

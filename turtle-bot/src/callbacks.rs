@@ -16,9 +16,7 @@ mod occurrence;
 mod remind_text;
 mod time;
 
-use chrono::{DateTime, NaiveDate};
-use chrono_tz::Tz;
-
+use ::time::{Date, OffsetDateTime};
 pub use date::*;
 pub use expired::*;
 pub use occurrence::*;
@@ -34,14 +32,14 @@ pub enum CallbackPage {
     Occcurence,
     RemindDate,
     RemindDateTime {
-        date: NaiveDate,
+        date: Date,
         time: RemindTime,
     },
     ConfirmDateTime {
-        date_time: DateTime<Tz>,
+        date_time: OffsetDateTime,
     },
     ConfirmOneOffJob {
-        date_time: DateTime<Tz>,
+        date_time: OffsetDateTime,
         msg_text: String,
     },
 }

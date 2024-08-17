@@ -1,8 +1,6 @@
 use std::time::Duration;
 
 use anyhow::bail;
-use chrono::{DateTime, Datelike, Timelike, Utc};
-use chrono_tz::Tz;
 use sqlx::PgPool;
 use teloxide::{
     payloads::{EditMessageTextSetters, SendMessageSetters},
@@ -12,6 +10,7 @@ use teloxide::{
     },
     Bot,
 };
+use time::{macros::offset, OffsetDateTime};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use super::{expired_callback_msg, time_check, CallbackPage, CallbackState};
@@ -24,7 +23,7 @@ pub async fn remind_text_page(
     bot: Bot,
     chat_id: ChatId,
     msg_id: MessageId,
-    chosen_datetime: DateTime<Tz>,
+    chosen_datetime: OffsetDateTime,
 ) -> anyhow::Result<()> {
     let chosen_year = chosen_datetime.year();
     let chosen_month = chosen_datetime.month();
@@ -56,7 +55,7 @@ Say it in your next message. 🐢"
 pub async fn confirm_reminder_text(
     bot: Bot,
     msg: Message,
-    chosen_datetime: DateTime<Tz>,
+    chosen_datetime: OffsetDateTime,
     callback: CallbackState,
 ) -> anyhow::Result<()> {
     let Some(text) = msg.text() else {
@@ -113,43 +112,40 @@ pub async fn remind_text_callback(
     bot: Bot,
     q: CallbackQuery,
     p: CallbackState,
-    (date_time, msg_text): (DateTime<Tz>, String),
+    (date_time, msg_text): (OffsetDateTime, String),
     pool: PgPool,
     sched: JobScheduler,
 ) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
+    bot.answer_callback_query(q.id.clone()).await?;
 
-    let Some(data) = q.data else {
+    let Some(ref data) = q.data else {
         tracing::error!("query data is None. should contain string or empty string.");
         bail!("no query callback data")
     };
-    let Some(Message {
-        id: msg_id, chat, ..
-    }) = q.message
-    else {
-        tracing::error!("no message data from telegram");
-        bail!("no telegram message data")
-    };
-
-    let Some(username) = q.from.username else {
+    let Some(ref username) = q.from.username else {
         tracing::warn!("no username given for this reminder text");
         bail!("wtf");
     };
+    let Some(msg) = q.regular_message() else {
+        tracing::error!("no message data from telegram");
+        bail!("no telegram message data")
+    };
+    let msg = msg.clone();
 
-    let now = Utc::now().with_timezone(&Tz::Singapore);
+    let now = OffsetDateTime::now_utc().to_offset(offset!(+8));
 
-    time_check(&bot, chat.id, date_time, now).await?;
+    time_check(&bot, msg.chat.id, date_time, now).await?;
 
     match data.as_ref() {
         JOB_TEXT_BACK => {
             p.update(CallbackPage::ConfirmDateTime { date_time })
                 .await?;
 
-            remind_text_page(bot, chat.id, msg_id, date_time).await?;
+            remind_text_page(bot, msg.chat.id, msg.id, date_time).await?;
         }
         JOB_TEXT_CONFIRM => {
             let time_delta = date_time - now;
-            let time_delta_secs = time_delta.num_seconds();
+            let time_delta_secs = time_delta.whole_seconds();
             let seconds = u64::from_le_bytes(time_delta_secs.to_le_bytes());
 
             let bot_clone = bot.clone();
@@ -168,7 +164,7 @@ pub async fn remind_text_callback(
 
 {text}"
                     );
-                    if let Err(e) = bot.send_message(chat.id, text).await {
+                    if let Err(e) = bot.send_message(msg.chat.id, text).await {
                         tracing::error!("error sending one-off-job {e:#?}");
                     }
                     if let Err(e) = sqlx::query!(
@@ -181,7 +177,7 @@ pub async fn remind_text_callback(
                          and username = $4
                          "#,
                         true,
-                        chat.id.0,
+                        msg.chat.id.0,
                         date_time,
                         username
                     )
@@ -199,7 +195,7 @@ pub async fn remind_text_callback(
             (target, job_id, type, due, completed, message, username)
             VALUES
             ($1, $2, $3, $4, $5, $6, $7)"#,
-                chat.id.0,
+                msg.chat.id.0,
                 job_id,
                 "normal",
                 date_time,
@@ -213,11 +209,15 @@ pub async fn remind_text_callback(
 
             p.reset().await?;
 
-            bot.edit_message_text(chat.id, msg_id, "confirmed 🐢 - your message will be sent.")
-                .await?;
+            bot.edit_message_text(
+                msg.chat.id,
+                msg.id,
+                "confirmed 🐢 - your message will be sent.",
+            )
+            .await?;
         }
 
-        _ => expired_callback_msg(bot, chat.id, msg_id).await?,
+        _ => expired_callback_msg(bot, msg.chat.id, msg.id).await?,
     }
     Ok(())
 }
