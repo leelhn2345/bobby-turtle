@@ -125,7 +125,7 @@ pub async fn remind_text_callback(
     };
     let Some(Message {
         id: msg_id, chat, ..
-    }) = q.message
+    }) = q.regular_message()
     else {
         tracing::error!("no message data from telegram");
         bail!("no telegram message data")
@@ -145,7 +145,7 @@ pub async fn remind_text_callback(
             p.update(CallbackPage::ConfirmDateTime { date_time })
                 .await?;
 
-            remind_text_page(bot, chat.id, msg_id, date_time).await?;
+            remind_text_page(bot, chat.id, *msg_id, date_time).await?;
         }
         JOB_TEXT_CONFIRM => {
             let time_delta = date_time - now;
@@ -213,11 +213,15 @@ pub async fn remind_text_callback(
 
             p.reset().await?;
 
-            bot.edit_message_text(chat.id, msg_id, "confirmed 🐢 - your message will be sent.")
-                .await?;
+            bot.edit_message_text(
+                chat.id,
+                *msg_id,
+                "confirmed 🐢 - your message will be sent.",
+            )
+            .await?;
         }
 
-        _ => expired_callback_msg(bot, chat.id, msg_id).await?,
+        _ => expired_callback_msg(bot, chat.id, *msg_id).await?,
     }
     Ok(())
 }

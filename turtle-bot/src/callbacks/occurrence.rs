@@ -93,18 +93,18 @@ pub async fn occurence_callback(
     p: CallbackState,
     stickers: Stickers,
 ) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
-    let Some(data) = q.data else {
+    bot.answer_callback_query(q.id.clone()).await?;
+    let Some(ref data) = q.data else {
         tracing::error!("query data is None. should contain string or empty string.");
         bail!("no query data")
     };
-    let Some(Message { id, chat, .. }) = q.message else {
+    let Some(Message { id, chat, .. }) = q.regular_message() else {
         tracing::error!("no message data from telegram");
         bail!("no message data")
     };
-    let occurence = match OccurenceState::try_from(data) {
+    let occurence = match OccurenceState::try_from(data.clone()) {
         Err(e) => {
-            expired_callback_msg(bot, chat.id, id).await?;
+            expired_callback_msg(bot, chat.id, *id).await?;
             bail!("{e}");
         }
         Ok(x) => x,
@@ -114,10 +114,10 @@ pub async fn occurence_callback(
             let now = Utc::now().with_timezone(&Tz::Singapore);
             p.update(CallbackPage::RemindDate).await?;
             tracing::debug!("changed callback state to date");
-            date_page(bot, chat.id, id, now.day(), now.month(), now.year()).await?;
+            date_page(bot, chat.id, *id, now.day(), now.month(), now.year()).await?;
         }
         OccurenceState::Recurring => {
-            bot.delete_message(chat.id, id).await?;
+            bot.delete_message(chat.id, *id).await?;
             send_sticker(&bot, &chat.id, stickers.coming_soon).await?;
         }
     }

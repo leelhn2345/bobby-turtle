@@ -13,7 +13,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
-    types::{Message, ParseMode},
+    types::{Message, ParseMode, ReplyParameters},
     Bot, RequestError,
 };
 
@@ -77,7 +77,7 @@ pub async fn bot_chat(
         Ok(response) => {
             bot.send_message(msg.chat.id, response)
                 .parse_mode(ParseMode::Markdown)
-                .reply_to_message_id(msg.id)
+                .reply_parameters(ReplyParameters::new(msg.id))
                 .await?
         }
         Err(e) => {
@@ -110,7 +110,7 @@ pub async fn chatgpt_chat(
 
     let mut tx = pool.begin().await?;
 
-    let username = match msg.from() {
+    let username = match &msg.from {
         Some(user) => match &user.username {
             Some(username) => Some(username),
             None => None,

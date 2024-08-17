@@ -316,12 +316,12 @@ pub async fn time_callback(
     p: CallbackState,
     (naive_date, remind_time): (NaiveDate, RemindTime),
 ) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
-    let Some(data) = q.data else {
+    bot.answer_callback_query(q.id.clone()).await?;
+    let Some(ref data) = q.data else {
         tracing::error!("query data is None. should contain string or empty spaces.");
         bail!("no callback query data")
     };
-    let Some(msg) = q.message else {
+    let Some(msg) = q.regular_message() else {
         tracing::error!("no message data from telegram");
         bail!("no telegram message data")
     };
@@ -374,7 +374,7 @@ pub async fn time_callback(
         }
         _ => {
             let mut remind_time = remind_time;
-            let time_select: TimeSelect = match data.try_into() {
+            let time_select: TimeSelect = match data.clone().try_into() {
                 Ok(x) => x,
                 Err(e) => {
                     tracing::error!(e);
@@ -411,11 +411,11 @@ pub async fn change_time_callback(
     p: CallbackState,
     date_time: DateTime<Tz>,
 ) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
+    bot.answer_callback_query(q.id.clone()).await?;
 
     let Some(Message {
         id: msg_id, chat, ..
-    }) = q.message
+    }) = q.regular_message()
     else {
         tracing::error!("no message data from telegram");
         bail!("no query message data");
@@ -435,7 +435,7 @@ pub async fn change_time_callback(
     })
     .await?;
 
-    time_page(bot, chat.id, msg_id, naive_date, remind_time).await?;
+    time_page(bot, chat.id, *msg_id, naive_date, remind_time).await?;
     Ok(())
 }
 

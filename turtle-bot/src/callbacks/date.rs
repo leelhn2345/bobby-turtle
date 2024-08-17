@@ -272,13 +272,13 @@ async fn send_prev_or_next_month(
 #[allow(deprecated)]
 #[tracing::instrument(skip_all)]
 pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyhow::Result<()> {
-    bot.answer_callback_query(q.id).await?;
+    bot.answer_callback_query(q.id.clone()).await?;
 
-    let Some(data) = q.data else {
+    let Some(ref data) = q.data else {
         tracing::error!("query data is None. should contain string or empty string.");
         return Err(DateError::NoCallbackData.into());
     };
-    let Some(Message { id, chat, .. }) = q.message else {
+    let Some(Message { id, chat, .. }) = q.regular_message() else {
         tracing::error!("no message data from telegram");
         return Err(DateError::NoMessageData.into());
     };
@@ -287,10 +287,10 @@ pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyh
         return Ok(());
     } else if data.strip_suffix(" <<").is_some() {
         let naive_prev_month = NaiveDate::parse_from_str(&data, "%d-%m-%Y <<")?;
-        send_prev_or_next_month(naive_prev_month, chat.id, id, bot).await?;
+        send_prev_or_next_month(naive_prev_month, chat.id, *id, bot).await?;
     } else if data.strip_prefix(">> ").is_some() {
         let naive_next_month = NaiveDate::parse_from_str(&data, ">> %d-%m-%Y")?;
-        send_prev_or_next_month(naive_next_month, chat.id, id, bot).await?;
+        send_prev_or_next_month(naive_next_month, chat.id, *id, bot).await?;
     } else if NaiveDate::parse_from_str(&data, "%d-%m-%Y").is_ok() {
         let naive_date = NaiveDate::parse_from_str(&data, "%d-%m-%Y")?;
 
@@ -301,20 +301,20 @@ pub async fn date_callback(bot: Bot, q: CallbackQuery, p: CallbackState) -> anyh
         })
         .await?;
 
-        time_page(bot, chat.id, id, naive_date, remind_time).await?;
+        time_page(bot, chat.id, *id, naive_date, remind_time).await?;
     } else {
         match data.as_ref() {
             OCCURENCE => {
                 p.update(CallbackPage::Occcurence).await?;
-                occurence_page(bot, chat.id, id).await?;
+                occurence_page(bot, chat.id, *id).await?;
             }
             CURRENT_MONTH => {
                 let now = Utc::now().with_timezone(&Tz::Singapore);
-                date_page(bot, chat.id, id, now.day(), now.month(), now.year()).await?;
+                date_page(bot, chat.id, *id, now.day(), now.month(), now.year()).await?;
             }
             unknown => {
                 tracing::error!(unknown, "unrecognizable value");
-                expired_callback_msg(bot, chat.id, id).await?;
+                expired_callback_msg(bot, chat.id, *id).await?;
                 bail!(DateError::InvalidData);
             }
         }
